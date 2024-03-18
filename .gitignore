@@ -17,3 +17,7 @@ ss_models/
 output_nci/
 output_nci2/
 
+glide_text2im/tokenizer/bpe_simple_vocab_16e6.txt.gz
+glide_text2im/tokenizer/encoder.json.gz
+glide_text2im/tokenizer/vocab.bpe.gz
+
