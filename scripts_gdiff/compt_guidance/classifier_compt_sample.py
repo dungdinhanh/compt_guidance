@@ -48,15 +48,16 @@ def main(local_rank):
         np.random.seed(seed)
 
         os.environ['PYTHONHASHSEED'] = str(seed)
-
+    base_folder = args.base_folder
     save_folder = os.path.join(
+        base_folder,
         args.logdir,
         "logs",
     )
 
     logger.configure(save_folder, rank=dist.get_rank())
 
-    output_images_folder = os.path.join(args.logdir, "reference")
+    output_images_folder = os.path.join(base_folder, args.logdir, "reference")
     os.makedirs(output_images_folder, exist_ok=True)
 
     logger.log("creating model and diffusion...")
@@ -64,7 +65,7 @@ def main(local_rank):
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
     model.load_state_dict(
-        dist_util.load_state_dict(args.model_path, map_location="cpu")
+        dist_util.load_state_dict(os.path.join(base_folder, args.model_path), map_location="cpu")
     )
     model.to(dist_util.dev())
     if args.use_fp16:
@@ -75,21 +76,26 @@ def main(local_rank):
     logger.log("loading classifier...")
     classifier = create_classifier(**args_to_dict(args, classifier_defaults().keys()))
     classifier.load_state_dict(
-        dist_util.load_state_dict(args.classifier_path, map_location="cpu")
+        dist_util.load_state_dict(os.path.join(base_folder, args.classifier_path), map_location="cpu")
     )
     classifier.to(dist_util.dev())
     if args.classifier_use_fp16:
         classifier.convert_to_fp16()
     classifier.eval()
-
+    timespace = int(args.timestep_respacing)
     def cond_fn(x, t, y=None):
         assert y is not None
         with th.enable_grad():
+            convert_t = t[0]%timespace + 1
             x_in = x.detach().requires_grad_(True)
-            logits = classifier(x_in, t)
-            log_probs = F.log_softmax(logits, dim=-1)
-            selected = log_probs[range(len(logits)), y.view(-1)]
-            return th.autograd.grad(selected.sum(), x_in)[0] * args.classifier_scale
+            if convert_t % 5 == 0:
+                print(convert_t)
+                logits = classifier(x_in, t)
+                log_probs = F.log_softmax(logits, dim=-1)
+                selected = log_probs[range(len(logits)), y.view(-1)]
+                return th.autograd.grad(selected.sum(), x_in)[0] * args.classifier_scale
+            else:
+                return th.zeros_like(x_in)
 
     def model_fn(x, t, y=None):
         assert y is not None
@@ -195,7 +201,8 @@ def create_argparser():
         save_imgs_for_visualization=True,
         fix_seed=False,
         specified_class=None,
-        logdir=""
+        logdir="",
+        base_folder="./"
     )
     defaults.update(model_and_diffusion_defaults())
     defaults.update(classifier_defaults())
