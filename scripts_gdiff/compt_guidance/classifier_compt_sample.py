@@ -83,12 +83,13 @@ def main(local_rank):
         classifier.convert_to_fp16()
     classifier.eval()
     timespace = int(args.timestep_respacing)
+    skip = int(args.skip)
     def cond_fn(x, t, y=None):
         assert y is not None
         with th.enable_grad():
             convert_t = t[0]%timespace + 1
             x_in = x.detach().requires_grad_(True)
-            if convert_t % 5 == 0:
+            if convert_t % skip == 0:
                 print(convert_t)
                 logits = classifier(x_in, t)
                 log_probs = F.log_softmax(logits, dim=-1)
@@ -202,7 +203,8 @@ def create_argparser():
         fix_seed=False,
         specified_class=None,
         logdir="",
-        base_folder="./"
+        base_folder="./",
+        skip=5
     )
     defaults.update(model_and_diffusion_defaults())
     defaults.update(classifier_defaults())

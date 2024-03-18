@@ -10,8 +10,8 @@
 #PBS -l wd
 #PBS -l storage=scratch/zg12
 #PBS -M adin6536@uni.sydney.edu.au
-#PBS -o output_nci/compt_cond1_log.txt
-#PBS -e output_nci/compt_cond1_error.txt
+#PBS -o output_nci/compt_uncond2_log.txt
+#PBS -e output_nci/compt_uncond2_error.txt
 
 
 module load use.own
@@ -26,7 +26,7 @@ SAMPLE_FLAGS="--batch_size 130 --num_samples 50000 --timestep_respacing 250"
 #SAMPLE_FLAGS="--batch_size 32 --num_samples 50000 --timestep_respacing 250"
 #TRAIN_FLAGS="--lr 1e-4 --batch_size 128 --schedule_sampler loss-second-moment"
 
-MODEL_FLAGS="--attention_resolutions 32,16,8 --class_cond True --diffusion_steps 1000 --dropout 0.1 --image_size 64 \
+MODEL_FLAGS="--attention_resolutions 32,16,8 --class_cond False --diffusion_steps 1000 --dropout 0.1 --image_size 64 \
  --learn_sigma True --noise_schedule cosine --num_channels 192 --num_head_channels 64 --num_res_blocks 3\
  --resblock_updown True --use_new_attention_order True --use_fp16 True --use_scale_shift_norm True"
 
@@ -46,27 +46,34 @@ eval ${cmd}
 #scales=( "2.0" "4.0" "6.0"  )
 ##scales=( "10.0"  )
 #scales=( "1.0"  )
-scales=("0.5")
+scales=("10.0")
+skips=("2" "5" "10")
 
 
 
 
 for scale in "${scales[@]}"
 do
-cmd="WORLD_SIZE=1 RANK=0 MASTER_IP=127.0.0.1 MASTER_PORT=29510 MARSV2_WHOLE_LIFE_STATE=0 python3 scripts_gdiff/compt_guidance/classifier_compt_sample.py $MODEL_FLAGS --classifier_scale ${scale}  \
- --model_path models/64x64_diffusion.pt $SAMPLE_FLAGS --classifier_path models/64x64_classifier.pt \
- --logdir runs/sampling_compt/IMN64/conditional/scale${scale}/ \
-  --save_imgs_for_visualization True --classifier_depth 4 --base_folder ${base_folder}"
+  for skip in "${skips[@]}"
+  do
+cmd="WORLD_SIZE=1 RANK=0 MASTER_IP=127.0.0.1 MASTER_PORT=29521 MARSV2_WHOLE_LIFE_STATE=0 python3 scripts_gdiff/compt_guidance/classifier_compt_sample.py $MODEL_FLAGS --classifier_scale ${scale}  \
+ --model_path models/64x64_diffusion_unc.pt $SAMPLE_FLAGS --classifier_path models/64x64_classifier.pt \
+ --logdir runs/sampling_compt/IMN64/unconditional/scale${scale}_skip${skip}/ \
+  --save_imgs_for_visualization True --classifier_depth 4 --base_folder ${base_folder} --skip ${skip}"
 echo ${cmd}
 eval ${cmd}
+done
 done
 
 for scale in "${scales[@]}"
 do
+  for skip in "${skips[@]}"
+  do
 cmd="python3 evaluations/evaluator_tolog.py ${base_folder}/reference/VIRTUAL_imagenet64_labeled.npz \
- ${base_folder}/runs/sampling_compt/IMN64/conditional/scale${scale}/reference/samples_50000x64x64x3.npz"
+ ${base_folder}/runs/sampling_compt/IMN64/unconditional/scale${scale}_skip${skip}/reference/samples_50000x64x64x3.npz"
 echo ${cmd}
 eval ${cmd}
+done
 done
 
 
