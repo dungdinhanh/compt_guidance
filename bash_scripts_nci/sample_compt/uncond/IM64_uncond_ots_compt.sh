@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #PBS -q gpuvolta
-#PBS -P zg12
+#PBS -P pg44
 #PBS -l walltime=48:00:00
 #PBS -l mem=32GB
 #PBS -l ncpus=24
@@ -47,7 +47,7 @@ eval ${cmd}
 ##scales=( "10.0"  )
 #scales=( "1.0"  )
 scales=("6.0")
-skips=("2" "5" "10")
+skips=("2" "5" )
 
 
 

@@ -10,8 +10,8 @@
 #PBS -l wd
 #PBS -l storage=scratch/zg12
 #PBS -M adin6536@uni.sydney.edu.au
-#PBS -o output_nci/compt_uncond3_log.txt
-#PBS -e output_nci/compt_uncond3_error.txt
+#PBS -o output_nci/compt_uncond_skip5_log1.txt
+#PBS -e output_nci/compt_uncond_skip5_error1.txt
 
 
 module load use.own
@@ -47,7 +47,7 @@ eval ${cmd}
 ##scales=( "10.0"  )
 #scales=( "1.0"  )
 scales=("10.0")
-skips=("2" "5" )
+skips=("5" )
 
 
 
