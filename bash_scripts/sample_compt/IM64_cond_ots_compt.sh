@@ -37,7 +37,7 @@ do
 cmd="python scripts_gdiff/compt_guidance/classifier_compt_sample.py $MODEL_FLAGS --classifier_scale ${scale}  \
  --model_path models/64x64_diffusion.pt $SAMPLE_FLAGS --classifier_path models/64x64_classifier.pt \
  --logdir runs/sampling_compt/IMN64/conditional/scale${scale}/ \
-  --save_imgs_for_visualization True --classifier_depth 4 --base_folder ${base_folder}"
+  --save_imgs_for_visualization True --classifier_depth 4 --base_folder ${base_folder} --skip 2"
 echo ${cmd}
 eval ${cmd}
 done

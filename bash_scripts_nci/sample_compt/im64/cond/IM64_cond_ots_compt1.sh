@@ -47,26 +47,32 @@ eval ${cmd}
 ##scales=( "10.0"  )
 #scales=( "1.0"  )
 scales=("1.0")
-
+skips=("5")
 
 
 
 for scale in "${scales[@]}"
 do
-cmd="WORLD_SIZE=1 RANK=0 MASTER_IP=127.0.0.1 MASTER_PORT=29511 MARSV2_WHOLE_LIFE_STATE=0 python3 scripts_gdiff/compt_guidance/classifier_compt_sample.py $MODEL_FLAGS --classifier_scale ${scale}  \
+  for skip in "${skips[@]}"
+  do
+cmd="WORLD_SIZE=1 RANK=0 MASTER_IP=127.0.0.1 MASTER_PORT=29512 MARSV2_WHOLE_LIFE_STATE=0 python3 scripts_gdiff/compt_guidance/classifier_compt_sample.py $MODEL_FLAGS --classifier_scale ${scale}  \
  --model_path models/64x64_diffusion.pt $SAMPLE_FLAGS --classifier_path models/64x64_classifier.pt \
- --logdir runs/sampling_compt/IMN64/conditional/scale${scale}/ \
-  --save_imgs_for_visualization True --classifier_depth 4 --base_folder ${base_folder}"
+ --logdir runs/sampling_compt2/IMN64/conditional/scale${scale}_skip${skip}/ \
+  --save_imgs_for_visualization True --classifier_depth 4 --base_folder ${base_folder} --skip ${skip}"
 echo ${cmd}
 eval ${cmd}
+done
 done
 
 for scale in "${scales[@]}"
 do
+  for skip in "${skips[@]}"
+  do
 cmd="python3 evaluations/evaluator_tolog.py ${base_folder}/reference/VIRTUAL_imagenet64_labeled.npz \
- ${base_folder}/runs/sampling_compt/IMN64/conditional/scale${scale}/reference/samples_50000x64x64x3.npz"
+ ${base_folder}/runs/sampling_compt2/IMN64/conditional/scale${scale}_skip${skip}/reference/samples_50000x64x64x3.npz"
 echo ${cmd}
 eval ${cmd}
+done
 done
 
 

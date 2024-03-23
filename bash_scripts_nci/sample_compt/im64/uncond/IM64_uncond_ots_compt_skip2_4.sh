@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 #PBS -q gpuvolta
@@ -11,8 +10,8 @@
 #PBS -l wd
 #PBS -l storage=scratch/zg12
 #PBS -M adin6536@uni.sydney.edu.au
-#PBS -o output_nci/compt_uncond_skip5_log3.txt
-#PBS -e output_nci/compt_uncond_skip5_error3.txt
+#PBS -o output_nci/compt_uncond_skip2_log3.txt
+#PBS -e output_nci/compt_uncond_skip2_error3.txt
 
 
 module load use.own
@@ -47,8 +46,8 @@ eval ${cmd}
 #scales=( "2.0" "4.0" "6.0"  )
 ##scales=( "10.0"  )
 #scales=( "1.0"  )
-scales=("14.0")
-skips=("5" )
+scales=("8.0")
+skips=("2" )
 
 
 
@@ -57,7 +56,7 @@ for scale in "${scales[@]}"
 do
   for skip in "${skips[@]}"
   do
-cmd="WORLD_SIZE=1 RANK=0 MASTER_IP=127.0.0.1 MASTER_PORT=2952311 MARSV2_WHOLE_LIFE_STATE=0 python3 scripts_gdiff/compt_guidance/classifier_compt_sample.py $MODEL_FLAGS --classifier_scale ${scale}  \
+cmd="WORLD_SIZE=1 RANK=0 MASTER_IP=127.0.0.1 MASTER_PORT=295261 MARSV2_WHOLE_LIFE_STATE=0 python3 scripts_gdiff/compt_guidance/classifier_compt_sample.py $MODEL_FLAGS --classifier_scale ${scale}  \
  --model_path models/64x64_diffusion_unc.pt $SAMPLE_FLAGS --classifier_path models/64x64_classifier.pt \
  --logdir runs/sampling_compt2/IMN64/unconditional/scale${scale}_skip${skip}/ \
   --save_imgs_for_visualization True --classifier_depth 4 --base_folder ${base_folder} --skip ${skip}"

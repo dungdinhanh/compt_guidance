@@ -82,20 +82,23 @@ def main(local_rank):
     if args.classifier_use_fp16:
         classifier.convert_to_fp16()
     classifier.eval()
+    df_steps = int(args.diffusion_steps)
     timespace = int(args.timestep_respacing)
+    steps_skipped_diff = int(df_steps/timespace)
     skip = int(args.skip)
     def cond_fn(x, t, y=None):
         assert y is not None
         with th.enable_grad():
-            convert_t = t[0]%timespace + 1
+            convert_t = int(t[0]/steps_skipped_diff) + 1
             x_in = x.detach().requires_grad_(True)
-            if convert_t % skip == 0:
-                # print(convert_t)
+            if convert_t % skip == 0 or convert_t <=2:
+                # print("call guidance:-------------->", convert_t)
                 logits = classifier(x_in, t)
                 log_probs = F.log_softmax(logits, dim=-1)
                 selected = log_probs[range(len(logits)), y.view(-1)]
                 return th.autograd.grad(selected.sum(), x_in)[0] * args.classifier_scale
             else:
+                # print("skip: ", convert_t)
                 return th.zeros_like(x_in)
 
     def model_fn(x, t, y=None):
