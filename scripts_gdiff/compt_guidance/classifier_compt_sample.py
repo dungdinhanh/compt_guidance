@@ -90,7 +90,7 @@ def main(local_rank):
             convert_t = t[0]%timespace + 1
             x_in = x.detach().requires_grad_(True)
             if convert_t % skip == 0:
-                print(convert_t)
+                # print(convert_t)
                 logits = classifier(x_in, t)
                 log_probs = F.log_softmax(logits, dim=-1)
                 selected = log_probs[range(len(logits)), y.view(-1)]
