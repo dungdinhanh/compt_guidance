@@ -57,7 +57,7 @@ for scale in "${scales[@]}"
 do
   for skip in "${skips[@]}"
   do
-cmd="WORLD_SIZE=1 RANK=0 MASTER_IP=127.0.0.1 MASTER_PORT=2952311 MARSV2_WHOLE_LIFE_STATE=0 python3 scripts_gdiff/compt_guidance/classifier_compt_sample.py $MODEL_FLAGS --classifier_scale ${scale}  \
+cmd="WORLD_SIZE=1 RANK=0 MASTER_IP=127.0.0.1 MASTER_PORT=30001 MARSV2_WHOLE_LIFE_STATE=0 python3 scripts_gdiff/compt_guidance/classifier_compt_sample.py $MODEL_FLAGS --classifier_scale ${scale}  \
  --model_path models/64x64_diffusion_unc.pt $SAMPLE_FLAGS --classifier_path models/64x64_classifier.pt \
  --logdir runs/sampling_compt2/IMN64/unconditional/scale${scale}_skip${skip}/ \
   --save_imgs_for_visualization True --classifier_depth 4 --base_folder ${base_folder} --skip ${skip}"
