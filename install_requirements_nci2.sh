@@ -23,4 +23,7 @@ pip3 install scikit-learn
 
 pip3 install zmq
 
-pip3 install sysv_ipc aiofiles>=0.8.0 aiohttp>=3.6.2 aiosqlite>=0.17.0 anyio>=3.4.0 asyncclick==8.0.1.3 cached-property>=1.5.2
+#pip3 install sysv_ipc aiofiles>=0.8.0 aiohttp>=3.6.2 aiosqlite>=0.17.0 anyio>=3.4.0 asyncclick==8.0.1.3 cached-property>=1.5.2
+pip3 install sysv_ipc aiofiles aiohttp aiosqlite anyio asyncclick==8.0.1.3 cached-property
+
+#pip install torch==1.9.0+cu102 torchvision==0.10.0+cu102 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.htm
