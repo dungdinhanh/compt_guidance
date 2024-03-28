@@ -262,6 +262,50 @@ class GaussianDiffusionClassFree2(GaussianDiffusionClassFree):
         del eps_gen, eps_gen_cond, out_uncond, new_eps, new_predxstart
         return new_mean
 
+class GaussianDiffusionClassFree2_Compt(GaussianDiffusionClassFree):
+    def __init__(self,
+        use_timesteps,
+        *,
+        betas,
+        model_mean_type,
+        model_var_type,
+        loss_type,
+        rescale_timesteps=False,
+    ):
+        super(GaussianDiffusionClassFree2_Compt, self).__init__(use_timesteps=use_timesteps, betas=betas,
+                                                   model_mean_type=model_mean_type,
+                                                   model_var_type=model_var_type,
+                                                   loss_type=loss_type,
+                                                   rescale_timesteps=rescale_timesteps)
+        self.skip_compt = 5
+
+    def condition_mean_mtl(self, cond_fn, p_mean_var, x, t, w=0.5, clip_denoised=True, denoised_fn=None,
+                           model_kwargs=None):
+        """
+        Compute the mean for the previous step, given a function cond_fn that
+        computes the gradient of a conditional log probability with respect to
+        x. In particular, cond_fn computes grad(log(p(y|x))), and we want to
+        condition on y.
+
+        This uses the conditioning strategy from Sohl-Dickstein et al. (2015).
+        """
+        if (t[0]+1) % self.skip_compt == 0 or t[0] <= 1:
+            # print("call guidance:---------------------", t[0])
+            out_uncond = self.p_mean_variance(cond_fn, x, t, clip_denoised=clip_denoised, denoised_fn=denoised_fn,
+                                            model_kwargs=model_kwargs)
+
+            eps_gen_cond = self._predict_eps_from_xstart(x, t, p_mean_var['pred_xstart'])
+            eps_gen = self._predict_eps_from_xstart(x, t, out_uncond['pred_xstart'])
+            new_eps = (1+w) * eps_gen_cond - w * eps_gen
+            new_predxstart = self.process_xstart(self._predict_xstart_from_eps(x, t, new_eps), denoised_fn, clip_denoised)
+            new_mean, _, _ = self.q_posterior_mean_variance(new_predxstart, x, t)
+
+            del eps_gen, eps_gen_cond, out_uncond, new_eps, new_predxstart
+            return new_mean
+        else:
+            # print("skip: ", t[0])
+            return p_mean_var['mean']
+
 class GaussianDiffusionClassFree2Contrastive(GaussianDiffusionClassFree):
     def __init__(self,
         use_timesteps,
