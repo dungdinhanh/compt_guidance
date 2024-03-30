@@ -29,7 +29,7 @@ eval ${cmd}
 scales=( "0.5" "1.0" "2.0"  )
 #scales=( "10.0"  )
 #scales=( "1.0"  )
-skips=("2" "3" "4" "5" )
+skips=("2" "3"  )
 
 
 
@@ -47,16 +47,16 @@ eval ${cmd}
 done
 done
 
-#for scale in "${scales[@]}"
-#do
-#  for skip in "${skips[@]}"
-#  do
-#cmd="python evaluations/evaluator_tolog.py ${base_folder}/reference/VIRTUAL_imagenet64_labeled.npz \
-# ${base_folder}/runs/sampling_compt2_quad/IMN64/conditional/scale${scale}_skip${skip}/reference/samples_50000x64x64x3.npz"
-#echo ${cmd}
-#eval ${cmd}
-#done
-#done
+for scale in "${scales[@]}"
+do
+  for skip in "${skips[@]}"
+  do
+cmd="python evaluations/evaluator_tolog.py ${base_folder}/reference/VIRTUAL_imagenet64_labeled.npz \
+ ${base_folder}/runs/sampling_compt2_quad/IMN64/conditional/scale${scale}_skip${skip}/reference/samples_50000x64x64x3.npz"
+echo ${cmd}
+eval ${cmd}
+done
+done
 
 
 
