@@ -26,7 +26,7 @@ import datetime
 from PIL import Image
 import hfai.client
 from torchvision import utils
-
+import matplotlib.pyplot as plt
 
 
 def main(local_rank):
@@ -60,6 +60,10 @@ def main(local_rank):
 
     output_images_folder = os.path.join(base_folder, args.logdir, "reference")
     os.makedirs(output_images_folder, exist_ok=True)
+    vis_images_folder = os.path.join(output_images_folder, "sample_images")
+    os.makedirs(vis_images_folder, exist_ok=True)
+    vis_images_folder_xt = os.path.join(vis_images_folder, "xt")
+    os.makedirs(vis_images_folder_xt, exist_ok=True)
 
     logger.log("creating model and diffusion...")
     model, diffusion = create_model_and_diffusion(
@@ -87,38 +91,46 @@ def main(local_rank):
     timespace = int(args.timestep_respacing)
     steps_skipped_diff = int(df_steps/timespace)
     skip = int(args.skip)
-
-    guidance_timesteps = get_guidance_timesteps_with_weight(timespace, skip)
-
+    loss_items = []
+    list_t = []
     def cond_fn(x, t, y=None):
         assert y is not None
         with th.enable_grad():
-            convert_t = int(t[0]/steps_skipped_diff)
+            convert_t = int(t[0]/steps_skipped_diff) + 1
             x_in = x.detach().requires_grad_(True)
-            if guidance_timesteps[convert_t] > 0:
+            logits = classifier(x_in, t)
+            log_probs = F.log_softmax(logits, dim=-1)
+            selected = log_probs[range(len(logits)), y.view(-1)]
+            loss_items.append(-selected.sum().detach().cpu().numpy())
+            if convert_t % skip == 0 or convert_t <=2:
                 # print("call guidance:-------------->", convert_t)
-                logits = classifier(x_in, t)
-                log_probs = F.log_softmax(logits, dim=-1)
-                selected = log_probs[range(len(logits)), y.view(-1)]
-                return th.autograd.grad(selected.sum(), x_in)[0] * args.classifier_scale * guidance_timesteps[convert_t]
+                list_t.append(convert_t)
+                return th.autograd.grad(selected.sum(), x_in)[0] * args.classifier_scale
             else:
                 # print("skip: ", convert_t)
                 return th.zeros_like(x_in)
 
     def model_fn(x, t, y=None):
+        utils.save_image(
+            x.detach().clamp(-1, 1),
+            os.path.join(vis_images_folder_xt, "samples_{}.png".format(t[0] + 1)),
+            nrow=1,
+            normalize=True,
+            range=(-1, 1),
+        )
+
         assert y is not None
         return model(x, t, y if args.class_cond else None)
 
     logger.log("Looking for previous file")
     checkpoint = os.path.join(output_images_folder, "samples_last.npz")
-    vis_images_folder = os.path.join(output_images_folder, "sample_images")
-    os.makedirs(vis_images_folder, exist_ok=True)
+
     final_file = os.path.join(output_images_folder,
                               f"samples_{args.num_samples}x{args.image_size}x{args.image_size}x3.npz")
-    if os.path.isfile(final_file):
-        dist.barrier()
-        logger.log("sampling complete")
-        return
+    # if os.path.isfile(final_file):
+    #     dist.barrier()
+    #     logger.log("sampling complete")
+    #     return
     if os.path.isfile(checkpoint):
         npzfile = np.load(checkpoint)
         all_images = list(npzfile['arr_0'])
@@ -182,6 +194,17 @@ def main(local_rank):
             logger.log(f"created {len(all_images) * args.batch_size} samples")
             np.savez(checkpoint, np.stack(all_images), np.stack(all_labels))
 
+    # draw classifier losses
+    losses_list = np.asarray(loss_items)
+    timesteps = np.arange(losses_list.shape[0])[::-1]
+    list_t = np.asarray(list_t)
+    plt.plot(timesteps, losses_list)
+    plt.vlines(list_t, -0.5, 0.0)
+    plt.gca().invert_xaxis()
+    loss_file = os.path.join(output_images_folder, "cls_loss.png")
+    plt.savefig(loss_file)
+
+
     arr = np.concatenate(all_images, axis=0)
     arr = arr[: args.num_samples]
     label_arr = np.concatenate(all_labels, axis=0)
@@ -195,31 +218,6 @@ def main(local_rank):
 
     dist.barrier()
     logger.log("sampling complete")
-
-def get_guidance_timesteps_with_weight(n=250, skip=5):
-    # c * i^2
-    T = n - 1
-    max_steps = int(n/skip)
-    c = n/(max_steps**2)
-    guidance_timesteps = np.zeros((n,), dtype=int)
-    for i in range(max_steps):
-        guidance_index = - int(c * (i ** 2)) + T
-        if 0 <= guidance_index and guidance_index <= T:
-            guidance_timesteps[guidance_index] += 1
-        else:
-            print(f"guidance index: {guidance_index}")
-            print(f"constant c: {c}")
-            print(f"faulty index: {i}")
-            print(f"timesteps {T}")
-            print(f"compressd by {skip} times")
-            print(f"error in index must larger than 0 or less than {T}")
-            exit(0)
-    guidance_timesteps[1] = 1
-    guidance_timesteps[0] = 1
-    # print(guidance_timesteps)
-    # print(np.sum(guidance_timesteps))
-    # exit(0)
-    return guidance_timesteps
 
 
 def create_argparser():
