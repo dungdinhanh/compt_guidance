@@ -3,10 +3,10 @@
 #PBS -q gpuvolta
 #PBS -P zg12
 #PBS -l walltime=48:00:00
-#PBS -l mem=64GB
-#PBS -l ncpus=24
-#PBS -l ngpus=2
-#PBS -l jobfs=64GB
+#PBS -l mem=128GB
+#PBS -l ncpus=48
+#PBS -l ngpus=4
+#PBS -l jobfs=128GB
 #PBS -l wd
 #PBS -l storage=scratch/zg12
 #PBS -M adin6536@uni.sydney.edu.au
@@ -43,7 +43,7 @@ cmd="ls"
 echo ${cmd}
 eval ${cmd}
 
-scales=( "0.7"   )
+scales=("0.1" "0.5" "0.7"   )
 #scales=( "10.0"  )
 #scales=( "1.0"  )
 skips=("5")

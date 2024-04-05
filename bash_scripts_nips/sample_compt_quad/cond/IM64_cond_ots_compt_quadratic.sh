@@ -26,10 +26,11 @@ cmd="ls"
 echo ${cmd}
 eval ${cmd}
 
-scales=( "0.1" "0.25"  )
+#scales=( "0.1" "0.25"  )
+scales=("0.3" "0.4")
 #scales=( "10.0"  )
 #scales=( "1.0"  )
-skips=( "7" "8" )
+skips=( "7" )
 
 
 
