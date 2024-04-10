@@ -1,8 +1,7 @@
 #!/bin/bash
 
-export NCCL_P2P_DISABLE=1
 
-SAMPLE_FLAGS="--batch_size 90 --num_samples 50000 --timestep_respacing 250"
+SAMPLE_FLAGS="--batch_size 1 --num_samples 1 --timestep_respacing 250"
 #SAMPLE_FLAGS="--batch_size 200 --num_samples 50000 --timestep_respacing 250"
 #SAMPLE_FLAGS="--batch_size 2 --num_samples 4 --timestep_respacing 250"
 #SAMPLE_FLAGS="--batch_size 2 --num_samples 4 --timestep_respacing 250"
@@ -11,10 +10,10 @@ SAMPLE_FLAGS="--batch_size 90 --num_samples 50000 --timestep_respacing 250"
 
 MODEL_FLAGS="--attention_resolutions 32,16,8 --class_cond True --diffusion_steps 1000 --dropout 0.1 --image_size 64 \
  --learn_sigma True --noise_schedule cosine --num_channels 192 --num_head_channels 64 --num_res_blocks 3\
- --resblock_updown True --use_new_attention_order True --use_fp16 True --use_scale_shift_norm True"
+ --resblock_updown True --use_new_attention_order True --use_fp16 True --use_scale_shift_norm True --fix_seed True"
 
 
-base_folder="/hdd/dungda/selfsup-guidance"
+base_folder="../selfsup-guidance"
 #MODEL_FLAGS="--attention_resolutions 32,16,8 --class_cond True --diffusion_steps 1000 --dropout 0.1 --image_size 64 \
 # --learn_sigma True --noise_schedule cosine --num_channels 192 --num_head_channels 64 --num_res_blocks 3 \
 #  --resblock_updown True --use_new_attention_order True --use_fp16 True --use_scale_shift_norm True"
@@ -26,11 +25,12 @@ cmd="ls"
 echo ${cmd}
 eval ${cmd}
 
-scales=( "0.5"   )
-#scales=( "10.0"  )
+#scales=( "2.0" "4.0" "6.0"  )
+##scales=( "10.0"  )
 #scales=( "1.0"  )
-skips=("6" "7" "8" "9" "10" )
-
+scales=("0.5")
+#scales=("2.0")
+skips=("1" "2" "3" "4" "5")
 
 
 
@@ -38,26 +38,14 @@ for scale in "${scales[@]}"
 do
   for skip in "${skips[@]}"
   do
-cmd="python scripts_gdiff/compt_guidance/classifier_compt_sample_quadratic.py $MODEL_FLAGS --classifier_scale ${scale}  \
+cmd="python scripts_gdiff/compt_guidance/analyse/visualize_path_classifier_comptquad_sample.py $MODEL_FLAGS --classifier_scale ${scale}  \
  --model_path models/64x64_diffusion.pt $SAMPLE_FLAGS --classifier_path models/64x64_classifier.pt \
- --logdir runs/sampling_compt2_quad/IMN64/conditional/scale${scale}_skip${skip}/ \
+ --logdir runs/sampling_compt2quad_visualize/IMN64/conditional/scale${scale}_skip${skip}/ \
   --save_imgs_for_visualization True --classifier_depth 4 --base_folder ${base_folder} --skip ${skip}"
 echo ${cmd}
 eval ${cmd}
 done
 done
-
-#for scale in "${scales[@]}"
-#do
-#  for skip in "${skips[@]}"
-#  do
-#cmd="python evaluations/evaluator_tolog.py ${base_folder}/reference/VIRTUAL_imagenet64_labeled.npz \
-# ${base_folder}/runs/sampling_compt2_quad/IMN64/conditional/scale${scale}_skip${skip}/reference/samples_50000x64x64x3.npz"
-#echo ${cmd}
-#eval ${cmd}
-#done
-#done
-
 
 
 #cmd="python scripts_hfai_gdiff/classifier_compt_sample.py --logdir runs/sampling/IMN64/conditional/ \
