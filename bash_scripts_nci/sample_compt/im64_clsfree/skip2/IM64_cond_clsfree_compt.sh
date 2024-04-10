@@ -54,7 +54,7 @@ for scale in "${scales[@]}"
 do
   for skip in "${skips[@]}"
   do
-cmd="WORLD_SIZE=1 RANK=0 MASTER_IP=127.0.0.1 MASTER_PORT=30514 MARSV2_WHOLE_LIFE_STATE=0 python3  scripts_gdiff/compt_guidance/classifier_free_compt_sample.py $MODEL_FLAGS  \
+cmd="WORLD_SIZE=1 RANK=0 MASTER_IP=127.0.0.1 MASTER_PORT=30521 MARSV2_WHOLE_LIFE_STATE=0 python3  scripts_gdiff/compt_guidance/classifier_free_compt_sample.py $MODEL_FLAGS  \
  --model_path models/64x64_diffusion.pt --uncond_model_path models/64x64_diffusion_unc.pt \
   $SAMPLE_FLAGS  --logdir runs/sampling_compt2/IMN64_clsfree/conditional/scale${scale}_skip${skip}/ \
   --save_imgs_for_visualization True --base_folder ${base_folder} --skip ${skip}"
