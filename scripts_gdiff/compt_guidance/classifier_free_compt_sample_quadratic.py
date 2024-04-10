@@ -99,10 +99,12 @@ def main(local_rank):
 
     def cond_fn(x, t, y=None):
         assert y is not None
+        # print(f"uncond: {t[0]}")
         return uncond_model(x, t)
 
     def model_fn(x, t, y=None):
         assert y is not None
+        # print(f"cond: {t[0]}")
         return model(x, t,  y)
 
     logger.log("Looking for previous file")

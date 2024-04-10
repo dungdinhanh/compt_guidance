@@ -28,7 +28,7 @@ eval ${cmd}
 
 scales=( "2.0" "4.0" "6.0"  )
 #scales=( "10.0"  )
-scales=( "1.0"  )
+scales=( "0.5"  )
 skips=("5")
 
 
@@ -37,9 +37,9 @@ for scale in "${scales[@]}"
 do
   for skip in "${skips[@]}"
   do
-cmd="python scripts_gdiff/compt_guidance/classifier_free_compt_sample.py $MODEL_FLAGS  \
+cmd="python scripts_gdiff/compt_guidance/classifier_free_compt_sample_quadratic.py $MODEL_FLAGS  \
  --model_path models/64x64_diffusion.pt --uncond_model_path models/64x64_diffusion_unc.pt \
-  $SAMPLE_FLAGS  --logdir runs/sampling_compt/IMN64_clsfree/conditional/scale${scale}_skip${skip}/ \
+  $SAMPLE_FLAGS  --logdir runs/sampling_compt/IMN64_clsfreequad/conditional/scale${scale}_skip${skip}/ \
   --save_imgs_for_visualization True --base_folder ${base_folder} --skip ${skip}"
 echo ${cmd}
 eval ${cmd}
@@ -51,7 +51,7 @@ do
   for skip in "${skips[@]}"
   do
 cmd="python evaluations/evaluator_tolog.py ${base_folder}/reference/VIRTUAL_imagenet64_labeled.npz \
- ${base_folder}/runs/sampling_compt/IMN64_clsfree/conditional/scale${scale}_skip${skip}/reference/samples_50000x64x64x3.npz"
+ ${base_folder}/runs/sampling_compt/IMN64_clsfreequad/conditional/scale${scale}_skip${skip}/reference/samples_50000x64x64x3.npz"
 echo ${cmd}
 eval ${cmd}
 done
