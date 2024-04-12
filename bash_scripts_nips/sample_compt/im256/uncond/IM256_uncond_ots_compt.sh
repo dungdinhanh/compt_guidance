@@ -1,23 +1,6 @@
 #!/bin/bash
 
-#PBS -q gpuvolta
-#PBS -P zg12
-#PBS -l walltime=48:00:00
-#PBS -l mem=128GB
-#PBS -l ncpus=48
-#PBS -l ngpus=4
-#PBS -l jobfs=128GB
-#PBS -l wd
-#PBS -l storage=scratch/zg12
-#PBS -M adin6536@uni.sydney.edu.au
-#PBS -o output_nci2/compt_256cond_log1.txt
-#PBS -e output_nci2/compt_256cond_error1.txt
-
-
-module load use.own
-module load python3/3.9.2
-module load gdiff
-#module load ASDiffusion
+export NCCL_P2P_DISABLE=1
 
 MODEL_FLAGS="--attention_resolutions 32,16,8 --class_cond False --diffusion_steps 1000 \
  --image_size 256 --learn_sigma True --noise_schedule linear --num_channels 256 --num_head_channels 64 \

@@ -23,7 +23,7 @@ eval ${cmd}
 #scales=( "2.0" "4.0" "6.0"  )
 ##scales=( "10.0"  )
 #scales=( "1.0"  )
-scales=("1.0")
+scales=("6.0")
 skips=("5")
 
 
