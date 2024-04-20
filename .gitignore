@@ -23,4 +23,5 @@ output_256/
 glide_text2im/tokenizer/bpe_simple_vocab_16e6.txt.gz
 glide_text2im/tokenizer/encoder.json.gz
 glide_text2im/tokenizer/vocab.bpe.gz
+models_imp
 

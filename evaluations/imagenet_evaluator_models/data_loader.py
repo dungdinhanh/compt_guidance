@@ -17,6 +17,7 @@ from PIL import Image
 
 import pickle
 import math
+import torchvision.transforms.functional as F
 
 
 
@@ -139,6 +140,40 @@ def val_imagenet_loader(batch_size=256, workers=4, pin_memory=True, mini=False, 
                                     pin_memory=pin_memory)
     return val_loader
 
+def val_imagenet_loader_res(batch_size=256, img_size=256, workers=4, pin_memory=True, mini=False, diff_transform=False):
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+
+    def diffuse_transform_r(img):
+        arr = center_crop_arr(img, img_size)
+
+        if random.random() < 0.5:
+            arr = arr[:, ::-1]
+
+        img = arr.astype(np.float32) / 127.5 - 1
+        img = np.transpose(img, [2, 0, 1])
+        return img
+
+    def diffuse_transform_with_normalize_r(img):
+        arr = center_crop_arr(img, img_size)
+        arr = F.to_tensor(arr)
+        img = normalize(arr)
+        return img
+
+    if not diff_transform:
+        print("diffusion transform with normalization")
+        val_transform = diffuse_transform_with_normalize_r
+    else:
+        print("diffusion transform")
+        val_transform = diffuse_transform_r
+
+
+    val_dataset = hfai.datasets.ImageNet(split='val', transform=val_transform, miniset=mini)
+    val_datasampler = DistributedSampler(val_dataset)
+    val_loader = val_dataset.loader(batch_size, sampler=val_datasampler, num_workers=workers,
+                                    pin_memory=pin_memory)
+    return val_loader
+
 def val_imagenet_loader_lowres(batch_size=256, workers=4, pin_memory=True, mini=False, diff_transform=False, res=256):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
@@ -223,6 +258,42 @@ def eval_loader(batch_size=256, pin_memory=True, path: str="runs/test.npz",  dif
                                     pin_memory=pin_memory)
     return sample_loader
 
+def eval_loader_res(batch_size=256, img_size=256, pin_memory=True, path: str="runs/test.npz",  diff_transform=False):
+    assert os.path.isfile(path), f"no checkpoints found at {path}"
+
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+
+    def diffuse_transform_r(img):
+        arr = center_crop_arr(img, img_size)
+
+        if random.random() < 0.5:
+            arr = arr[:, ::-1]
+
+        img = arr.astype(np.float32) / 127.5 - 1
+        img = np.transpose(img, [2, 0, 1])
+        return img
+
+    def diffuse_transform_with_normalize_r(img):
+        arr = center_crop_arr(img, img_size)
+        arr = F.to_tensor(arr)
+        img = normalize(arr)
+        # img = torch.transpose(img, [2, 0, 1])
+        return img
+
+    if not diff_transform:
+        print("diffusion transform with normalization")
+        val_transform = diffuse_transform_with_normalize_r
+    else:
+        print("diffusion transform")
+        val_transform = diffuse_transform_r
+
+    samples_dataset = SampleDataset(path=path, transform=val_transform)
+    samples_datasampler = DistributedSampler(samples_dataset, shuffle=False)
+    sample_loader = samples_dataset.loader(batch_size, sampler=samples_datasampler, num_workers=1,
+                                    pin_memory=pin_memory)
+    return sample_loader
+
 import random
 def diffuse_transform(img):
     arr = center_crop_arr(img, 256)
@@ -233,6 +304,15 @@ def diffuse_transform(img):
     img = arr.astype(np.float32) / 127.5 - 1
     img = np.transpose(img, [2, 0, 1])
     return img
+
+def diffuse_transform_with_normalize(img, img_size):
+    arr = center_crop_arr(img, img_size)
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+    img = normalize(arr)
+    img = np.transpose(img, [2, 0, 1])
+    return img
+
 
 
 
