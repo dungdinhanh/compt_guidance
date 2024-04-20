@@ -5,6 +5,7 @@ process towards more realistic images.
 
 import argparse
 import os
+print(os.getcwd())
 
 import numpy as np
 import torch as th
@@ -57,14 +58,16 @@ def main(local_rank):
 
         os.environ['PYTHONHASHSEED'] = str(seed)
 
+    base_folder = args.base_folder
     save_folder = os.path.join(
+        base_folder,
         args.logdir,
         "logs",
     )
 
     logger.configure(save_folder, rank=dist.get_rank())
 
-    output_images_folder = os.path.join(args.logdir, "reference")
+    output_images_folder = os.path.join(base_folder, args.logdir, "reference")
     os.makedirs(output_images_folder, exist_ok=True)
 
     logger.log("creating model and diffusion...")
@@ -275,7 +278,8 @@ def create_argparser():
         specified_class=None,
         logdir="",
         skip=5,
-        skip_type="linear"
+        skip_type="linear",
+        base_folder = "./",
     )
     defaults.update(model_and_diffusion_defaults())
     # defaults.update(classifier_defaults())
