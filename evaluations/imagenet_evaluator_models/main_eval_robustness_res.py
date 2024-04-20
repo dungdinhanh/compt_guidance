@@ -8,7 +8,7 @@ import torch.optim as optim
 import torch.utils.data
 
 from evaluations.imagenet_evaluator_models.models_imp import *
-from evaluations.imagenet_evaluator_models.data_loader import data_loader, eval_loader, val_imagenet_loader
+from evaluations.imagenet_evaluator_models.data_loader import data_loader, eval_loader_res, val_imagenet_loader_res
 from evaluations.imagenet_evaluator_models.helper import AverageMeter, save_checkpoint2, accuracy, adjust_learning_rate
 
 from guided_diffusion import dist_util, logger
@@ -25,7 +25,7 @@ model_names = [
     'densenet169', 'densenet201', 'densenet201', 'densenet161',
     'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn',
     'vgg19', 'vgg19_bn', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
-    'resnet152', 'unet256na'
+    'resnet152', 'unet256na', 'unet64na'
 ]
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
@@ -43,7 +43,7 @@ parser.add_argument('-p', '--path', required=True ,type=str, help="samples for r
 parser.add_argument('--print-freq', '-f', default=10, type=int, metavar='N',
                     help='print frequency (default: 10)')
 parser.add_argument('--local', action='store_true')
-
+parser.add_argument('--image_size', default=256, type=int)
 
 
 best_prec1 = 0.0
@@ -148,8 +148,8 @@ def main(local_rank):
 
     # Data loading
     mini = args.local
-    val_loader = val_imagenet_loader(args.batch_size, args.workers, args.pin_memory, mini, diff)
-    sample_loader = eval_loader(args.batch_size, True, args.path, diff)
+    val_loader = val_imagenet_loader_res(args.batch_size, args.image_size, args.workers, args.pin_memory, mini, diff)
+    sample_loader = eval_loader_res(args.batch_size, args.image_size, True, args.path, diff)
 
 
     if args.evaluate:
