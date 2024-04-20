@@ -5,3 +5,6 @@ loading clip...
 Looking for previous file
 Number of current images: 0
 sampling...
+created 25 samples
+created 50 samples
+created 75 samples

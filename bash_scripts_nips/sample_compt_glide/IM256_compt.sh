@@ -18,7 +18,7 @@ eval ${cmd}
 
 
 base_folder="/hdd/dungda/selfsup-guidance/"
-base_folder="./"
+#base_folder="./"
 
 scales=(  "1.0"  )
 skips=("5")
