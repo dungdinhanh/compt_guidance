@@ -10,7 +10,7 @@
 #PBS -l wd
 #PBS -l storage=scratch/zg12
 #PBS -M adin6536@uni.sydney.edu.au
-#PBS -o output_256/compt_256cond_sc26_sk5.txt
+#PBS -o output_256/compt_256cond_sc28_sk5.txt
 #PBS -e errors/compt_256cond_error1.txt
 
 
@@ -41,7 +41,7 @@ eval ${cmd}
 #scales=( "2.0" "4.0" "6.0"  )
 ##scales=( "10.0"  )
 #scales=( "1.0"  )
-scales=("26.0")
+scales=("28.0")
 skips=("5")
 
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #PBS -q gpuvolta
-#PBS -P pg44
+#PBS -P zg12
 #PBS -l walltime=48:00:00
 #PBS -l mem=128GB
 #PBS -l ncpus=48
@@ -10,8 +10,8 @@
 #PBS -l wd
 #PBS -l storage=scratch/zg12
 #PBS -M adin6536@uni.sydney.edu.au
-#PBS -o output_256/compt_256cond_sc26_sk5.txt
-#PBS -e errors/compt_256cond_error1.txt
+#PBS -o output_nci2/compt_256cond_scale7p0_sk5.txt
+#PBS -e errors/compt_256cond_error3.txt
 
 
 module load use.own
@@ -19,7 +19,7 @@ module load python3/3.9.2
 module load gdiff
 #module load ASDiffusion
 
-MODEL_FLAGS="--attention_resolutions 32,16,8 --class_cond False --diffusion_steps 1000 \
+MODEL_FLAGS="--attention_resolutions 32,16,8 --class_cond True --diffusion_steps 1000 \
  --image_size 256 --learn_sigma True --noise_schedule linear --num_channels 256 --num_head_channels 64 \
   --num_res_blocks 2 --resblock_updown True --use_fp16 True --use_scale_shift_norm True"
 
@@ -41,7 +41,7 @@ eval ${cmd}
 #scales=( "2.0" "4.0" "6.0"  )
 ##scales=( "10.0"  )
 #scales=( "1.0"  )
-scales=("26.0")
+scales=("7.0")
 skips=("5")
 
 
@@ -50,10 +50,10 @@ for scale in "${scales[@]}"
 do
   for skip in "${skips[@]}"
   do
-cmd="WORLD_SIZE=1 RANK=0 MASTER_IP=127.0.0.1 MASTER_PORT=29550 MARSV2_WHOLE_LIFE_STATE=0 python3 scripts_gdiff/compt_guidance/classifier_compt_sample.py \
+cmd="WORLD_SIZE=1 RANK=0 MASTER_IP=127.0.0.1 MASTER_PORT=29456 MARSV2_WHOLE_LIFE_STATE=0 python3 scripts_gdiff/compt_guidance/classifier_compt_sample.py \
   $MODEL_FLAGS --classifier_scale ${scale}  \
- --model_path models/256x256_diffusion_uncond.pt $SAMPLE_FLAGS --classifier_path models/256x256_classifier.pt \
- --logdir runs/sampling_compt2/IMN256/unconditional/scale${scale}_skip${skip}/ \
+ --model_path models/256x256_diffusion.pt $SAMPLE_FLAGS --classifier_path models/256x256_classifier.pt \
+ --logdir runs/sampling_compt2/IMN256/conditional/scale${scale}_skip${skip}/ \
   --save_imgs_for_visualization True --base_folder ${base_folder} --skip ${skip}"
 echo ${cmd}
 eval ${cmd}
@@ -65,7 +65,7 @@ do
   for skip in "${skips[@]}"
   do
 cmd="python3 evaluations/evaluator_tolog.py ${base_folder}/reference/VIRTUAL_imagenet256_labeled.npz \
- ${base_folder}/runs/sampling_compt2/IMN256/unconditional/scale${scale}_skip${skip}/reference/samples_50000x256x256x3.npz"
+ ${base_folder}/runs/sampling_compt2/IMN256/conditional/scale${scale}_skip${skip}/reference/samples_50000x256x256x3.npz"
 echo ${cmd}
 eval ${cmd}
 done
