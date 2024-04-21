@@ -19,7 +19,7 @@ output_nci2/
 output_clsfree/
 errors
 output_256/
-
+runsGLIDECOMPT/
 glide_text2im/tokenizer/bpe_simple_vocab_16e6.txt.gz
 glide_text2im/tokenizer/encoder.json.gz
 glide_text2im/tokenizer/vocab.bpe.gz

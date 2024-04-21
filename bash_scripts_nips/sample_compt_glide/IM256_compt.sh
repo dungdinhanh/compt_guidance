@@ -1,6 +1,6 @@
 #!/bin/bash
 
-
+export NCCL_P2P_DISABLE=1
 
 MODEL_FLAGS=""
 
@@ -20,8 +20,8 @@ eval ${cmd}
 base_folder="/hdd/dungda/selfsup-guidance/"
 #base_folder="./"
 
-scales=(  "1.0"  )
-skips=("5")
+scales=( "0.5" "1.0" "2.0" "2.5" "3.0" )
+skips=("4" "5" "6")
 
 
 

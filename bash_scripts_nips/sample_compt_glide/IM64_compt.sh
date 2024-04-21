@@ -21,7 +21,8 @@ base_folder="/hdd/dungda/selfsup-guidance/"
 
 
 #scales=( "0.5" "1.0" "2.0" )
-scales=( "0.1" "0.5" "0.7" "1.0" "2.0" )
+scales=( "0.1" "0.5" "0.7" "1.0" "2.0"  )
+scales=( "2.5" "3.0" "3.5" "4.0"  )
 skips=("5")
 #scales=( "0.1"  )
 
@@ -44,7 +45,7 @@ do
   for skip in "${skips[@]}"
   do
 cmd="python evaluations/evaluator_tolog.py ${base_folder}/reference/VIRTUAL_MSCOCO_val_64x64_squ.npz \
- ${base_folder}/runsGLIDECOMPT/sampling_glide_compt/IMN64/scale${scale}/reference/samples_30000x64x64x3.npz"
+ ${base_folder}/runsGLIDECOMPT/sampling_glide_compt/IMN64/scale${scale}_${skip}/reference/samples_30000x64x64x3.npz"
 echo ${cmd}
 eval ${cmd}
 done
