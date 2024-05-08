@@ -20,9 +20,9 @@ eval ${cmd}
 base_folder="/hdd/dungda/selfsup-guidance/"
 #base_folder="./"
 
-scales=( "5.5" "6.0" "6.5" "7.0" "7.5" "8.0")
-scales=(  "8.0")
-skips=("4" "5" "6")
+scales=( "7.0" "8.0" "9.0" "10.0")
+scales=( "11.0")
+skips=("4" "5" "6" "7")
 skips=("7" "8" "9")
 
 
@@ -32,7 +32,7 @@ do
   for skip in "${skips[@]}"
   do
 cmd="python scripts_glide/compt/glide_up_sample.py $MODEL_FLAGS --guidance_scale ${scale}  $SAMPLE_FLAGS \
- --logdir runsGLIDECOMPT/sampling_glide/IMN256/scale${scale}_sk${skip}/ --skip_type linear --skip ${skip} --base_folder ${base_folder}"
+ --logdir runsGLIDECOMPT/sampling_glide_quad/IMN256/scale${scale}_sk${skip}/ --skip_type quadratic --skip ${skip} --base_folder ${base_folder}"
 echo ${cmd}
 eval ${cmd}
 done
@@ -44,7 +44,7 @@ do
   for skip in "${skips[@]}"
   do
 cmd="python evaluations/evaluator_tolog.py ${base_folder}/reference/VIRTUAL_MSCOCO_val_256x256_squ256.npz \
- ${base_folder}/runsGLIDECOMPT/sampling_glide/IMN256/scale${scale}_sk${skip}/reference/samples_30000x256x256x3.npz"
+ ${base_folder}/runsGLIDECOMPT/sampling_glide_quad/IMN256/scale${scale}_sk${skip}/reference/samples_30000x256x256x3.npz"
 echo ${cmd}
 eval ${cmd}
 done
