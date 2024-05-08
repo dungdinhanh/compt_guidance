@@ -152,3 +152,6 @@ sampling_compt/
 sampling_compt2/
 
 models_imp/
+
+runsGLIDECOMPT/
+runs/
