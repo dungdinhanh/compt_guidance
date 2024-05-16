@@ -22,8 +22,11 @@ base_folder="/hdd/dungda/selfsup-guidance/"
 
 scales=( "5.5" "6.0" "6.5" "7.0" "7.5" "8.0")
 scales=(  "8.0")
-skips=("4" "5" "6")
-skips=("7" "8" "9")
+scales=("9.0")
+scales=(  "11.0")
+scales=(  "13.0" "14.0" )
+skips=("7" "8" "9" "10")
+#skips=("7" "8" "9")
 
 
 
