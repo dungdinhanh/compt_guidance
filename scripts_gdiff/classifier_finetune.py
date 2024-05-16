@@ -34,12 +34,13 @@ import torch.nn.init as torchinit
 
 def main(local_rank):
     args = create_argparser().parse_args()
-    save_model_folder = os.path.join(args.logdir, "models")
+    logdir = os.path.join(args.base_folder, args.logdir)
+    save_model_folder = os.path.join(logdir, "models")
     os.makedirs(save_model_folder, exist_ok=True)
     dist_util.setup_dist(local_rank)
 
     log_folder = os.path.join(
-        args.logdir,
+        logdir,
         "logs",
     )
     if dist.get_rank() == 0:
@@ -58,7 +59,7 @@ def main(local_rank):
         )
 
     resume_step = 0
-    args.resume_checkpoint="../metaguidance/models/64x64_classifier.pt"
+
     if args.resume_checkpoint:
         resume_step = parse_resume_step_from_filename(args.resume_checkpoint)
 
@@ -77,8 +78,17 @@ def main(local_rank):
         )
         latest_model = os.path.join(save_model_folder, "latest.pt")
         if not os.path.isfile(latest_model):
+            resume_checkpoint = os.path.join(args.base_folder, "models/64x64_classifier.pt")
             logger.log(
-                "No latest checkpoint found - train from scratch"
+                f"loading model from checkpoint: {resume_checkpoint}... at {0} step"
+            )
+            model.load_state_dict(
+                dist_util.load_state_dict(
+                    resume_checkpoint
+                )
+            )
+            logger.log(
+                "No latest checkpoint found - load pretrained and train"
             )
             load_last_checkpoint = False
         else:
@@ -90,8 +100,8 @@ def main(local_rank):
 
     torchinit.xavier_uniform(model.out[2].qkv_proj.weight)
     torchinit.xavier_uniform(model.out[2].c_proj.weight)
-    # torchinit.xavier_uniform(model.module.out[2].attention.)
-
+    # # # torchinit.xavier_uniform(model.module.out[2].attention.)
+    # #
     torchinit.xavier_uniform(model.middle_block[2].out_layers[3].weight)
 
 
@@ -138,24 +148,24 @@ def main(local_rank):
 
     logger.log(f"creating optimizer...")
     opt = AdamW(mp_trainer.master_params, lr=args.lr, weight_decay=args.weight_decay)
-    # if args.resume_checkpoint:
-    #     opt_checkpoint = bf.join(
-    #         bf.dirname(args.resume_checkpoint), f"opt{resume_step:06}.pt"
-    #     )
-    #     logger.log(f"loading optimizer state from checkpoint: {opt_checkpoint}")
-    #     opt.load_state_dict(
-    #         dist_util.load_state_dict(opt_checkpoint)
-    #     )
-    # else:
-    #     if load_last_checkpoint:
-    #         opt_checkpoint = os.path.join(save_model_folder, "optlatest.pt")
-    #         if os.path.isfile(opt_checkpoint):
-    #             logger.log(f"Loading optimizer state from checkpoint: {opt_checkpoint}")
-    #             opt_dict = dist_util.load_state_dict(opt_checkpoint)
-    #             opt.load_state_dict(opt_dict["opt"])
-    #             step = opt_dict['step'] + 1
-    #             logger.log(f"Training from {step}")
-    #             resume_step = step
+    if args.resume_checkpoint:
+        opt_checkpoint = bf.join(
+            bf.dirname(args.resume_checkpoint), f"opt{resume_step:06}.pt"
+        )
+        logger.log(f"loading optimizer state from checkpoint: {opt_checkpoint}")
+        opt.load_state_dict(
+            dist_util.load_state_dict(opt_checkpoint)
+        )
+    else:
+        if load_last_checkpoint:
+            opt_checkpoint = os.path.join(save_model_folder, "optlatest.pt")
+            if os.path.isfile(opt_checkpoint):
+                logger.log(f"Loading optimizer state from checkpoint: {opt_checkpoint}")
+                opt_dict = dist_util.load_state_dict(opt_checkpoint)
+                opt.load_state_dict(opt_dict["opt"])
+                step = opt_dict['step'] + 1
+                logger.log(f"Training from {step}")
+                resume_step = step
 
     # initilialize last layer
 
@@ -199,6 +209,11 @@ def main(local_rank):
     data_iter = iter(data)
     if val_data is not None:
         val_iter = iter(val_data)
+        # with th.no_grad():
+        #     with model.no_sync():
+        #         model.eval()
+        #         forward_backward_log(val_iter, prefix="val")
+        #         model.train()
 
     for step in range(args.iterations - resume_step):
         logger.logkv("step", step + resume_step)
@@ -300,9 +315,10 @@ def create_argparser():
         schedule_sampler="uniform",
         resume_checkpoint="",
         log_interval=100,
-        eval_interval=5,
+        eval_interval=5000,
         save_interval=25000,
-        logdir="runs"
+        logdir="runs",
+        base_folder="/hdd/dungda/metaguidance"
     )
     defaults.update(classifier_and_diffusion_defaults())
     parser = argparse.ArgumentParser()
