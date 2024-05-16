@@ -121,17 +121,20 @@ def main(local_rank):
     # )
     data = load_data_imagenet_hfai(train=True, image_size=args.image_size,
                                    batch_size=args.batch_size, random_crop=True)
-    if args.val_data_dir:
-        # val_data = load_data(
-        #     data_dir=args.val_data_dir,
-        #     batch_size=args.batch_size,
-        #     image_size=args.image_size,
-        #     class_cond=True,
-        # )
-        val_data = load_data_imagenet_hfai(train=False, image_size=args.image_size,
-                                           batch_size=args.batch_size, random_crop=True)
-    else:
-        val_data = None
+    # if args.val_data_dir:
+    #     # val_data = load_data(
+    #     #     data_dir=args.val_data_dir,
+    #     #     batch_size=args.batch_size,
+    #     #     image_size=args.image_size,
+    #     #     class_cond=True,
+    #     # )
+    #     val_data = load_data_imagenet_hfai(train=False, image_size=args.image_size,
+    #                                        batch_size=args.batch_size, random_crop=True)
+    # else:
+    #     val_data = None
+    val_data = load_data_imagenet_hfai(train=False, image_size=args.image_size,
+                                       batch_size=args.batch_size, random_crop=True)
+
 
     logger.log(f"creating optimizer...")
     opt = AdamW(mp_trainer.master_params, lr=args.lr, weight_decay=args.weight_decay)
