@@ -93,16 +93,18 @@ def main(local_rank):
     skip = int(args.skip)
     loss_items = []
     list_t = []
+
+    guidance_timesteps = get_guidance_timesteps_with_weight(250, skip, args.k)
     def cond_fn(x, t, y=None):
         assert y is not None
         with th.enable_grad():
-            convert_t = int(t[0]/steps_skipped_diff) + 1
+            convert_t = int(t[0] / steps_skipped_diff)
             x_in = x.detach().requires_grad_(True)
             logits = classifier(x_in, t)
             log_probs = F.log_softmax(logits, dim=-1)
             selected = log_probs[range(len(logits)), y.view(-1)]
             loss_items.append(-selected.sum().detach().cpu().numpy())
-            if convert_t % skip == 0 or convert_t == 250:
+            if guidance_timesteps[convert_t] > 0:
                 # print("call guidance:-------------->", convert_t)
                 list_t.append(convert_t)
                 return th.autograd.grad(selected.sum(), x_in)[0] * args.classifier_scale
@@ -238,6 +240,7 @@ def create_argparser():
         skip=5,
         seed=2333,
         classes=5,
+        k=1.0
     )
     defaults.update(model_and_diffusion_defaults())
     defaults.update(classifier_defaults())
@@ -245,9 +248,30 @@ def create_argparser():
     add_dict_to_argparser(parser, defaults)
     return parser
 
-
-
-
+def get_guidance_timesteps_with_weight(n=250, skip=5, k=1):
+    # c * i^2
+    T = n - 1
+    max_steps = int(n/skip)
+    c = n/(max_steps**k)
+    guidance_timesteps = np.zeros((n,), dtype=int)
+    for i in range(max_steps):
+        guidance_index = - int(c * (i ** k)) + T
+        if 0 <= guidance_index and guidance_index <= T:
+            guidance_timesteps[guidance_index] += 1
+        else:
+            print(f"guidance index: {guidance_index}")
+            print(f"constant c: {c}")
+            print(f"faulty index: {i}")
+            print(f"timesteps {T}")
+            print(f"compressd by {skip} times")
+            print(f"error in index must larger than 0 or less than {T}")
+            exit(0)
+    guidance_timesteps[0] = 1
+    guidance_timesteps[1] = 1
+    # print(guidance_timesteps)
+    # print(np.sum(guidance_timesteps))
+    # exit(0)
+    return guidance_timesteps
 
 if __name__ == "__main__":
     ngpus = th.cuda.device_count()
