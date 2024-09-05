@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #PBS -q gpuvolta
-#PBS -P pg44
+#PBS -P zg12
 #PBS -l walltime=48:00:00
 #PBS -l mem=128GB
 #PBS -l ncpus=48
@@ -10,7 +10,7 @@
 #PBS -l wd
 #PBS -l storage=scratch/zg12
 #PBS -M adin6536@uni.sydney.edu.au
-#PBS -o output_256/compt_256cond_sc28_sk5.txt
+#PBS -o output_256/compt_256cond_sc30_sk5.txt
 #PBS -e errors/compt_256cond_error1.txt
 
 
