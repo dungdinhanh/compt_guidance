@@ -43,7 +43,7 @@ class CLIPComptModel:
             with torch.enable_grad():
                 x_var = x.detach().requires_grad_(True)
                 if guidance_steps[resp_timestep - 1] == 1:
-                    print(resp_timestep)
+                    # print(resp_timestep)
                     z_i = self.image_embeddings(x_var, t)
                     loss = torch.exp(self.logit_scale) * (z_t * z_i).sum()
                     grad = torch.autograd.grad(loss, x_var)[0].detach()

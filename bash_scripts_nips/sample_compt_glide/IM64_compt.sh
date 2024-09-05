@@ -1,11 +1,12 @@
 #!/bin/bash
 
+export NCCL_P2P_DISABLE=1
 
 
 MODEL_FLAGS=""
 
-SAMPLE_FLAGS="--batch_size 100 --num_samples 30000 --timestep_respacing 250"
-SAMPLE_FLAGS="--batch_size 2 --num_samples 6 --timestep_respacing 250"
+SAMPLE_FLAGS="--batch_size 75 --num_samples 30000 --timestep_respacing 250"
+#SAMPLE_FLAGS="--batch_size 2 --num_samples 6 --timestep_respacing 250"
 
 
 cmd="cd ../../../"
@@ -16,27 +17,68 @@ cmd="ls"
 echo ${cmd}
 eval ${cmd}
 
+base_folder="/hdd/dungda/selfsup-guidance/"
+
+
 #scales=( "0.5" "1.0" "2.0" )
-scales=( "0.1" "0.5" "0.7" )
-scales=( "0.1"  )
+scales=( "0.1" "0.5" "0.7" "1.0" "2.0"  )
+scales=( "2.5" "3.0" "3.5" "4.0"  )
+scales=( "8.0"  )
+skips=( "11" "12")
+#scales=( "0.1"  )
 
 
 
 for scale in "${scales[@]}"
 do
+  for skip in "${skips[@]}"
+  do
 cmd="python scripts_glide/compt/glide_sample.py $MODEL_FLAGS --guidance_scale ${scale}  $SAMPLE_FLAGS \
- --logdir runs/sampling_glide_compt/IMN64/scale${scale}/  --skip_type linear --skip 5"
+ --logdir runsGLIDECOMPT/sampling_glide_compt/IMN64/scale${scale}_${skip}/  --skip_type linear --skip ${skip} --base_folder ${base_folder}"
 echo ${cmd}
 eval ${cmd}
+done
 done
 
 
 for scale in "${scales[@]}"
 do
-cmd="python evaluations/evaluator_tolog.py reference/VIRTUAL_MSCOCO_val_64x64_squ.npz \
- runs/sampling_glide_compt/IMN64/scale${scale}/reference/samples_30000x64x64x3.npz"
-#echo ${cmd}
-#eval ${cmd}
+  for skip in "${skips[@]}"
+  do
+cmd="python evaluations/evaluator_tolog.py ${base_folder}/reference/VIRTUAL_MSCOCO_val_64x64_squ.npz \
+ ${base_folder}/runsGLIDECOMPT/sampling_glide_compt/IMN64/scale${scale}_${skip}/reference/samples_30000x64x64x3.npz"
+echo ${cmd}
+eval ${cmd}
+done
+done
+
+
+scales=( "9.0" "10.0" )
+skips=( "8" "9" "10" "11" "12")
+#scales=( "0.1"  )
+
+
+
+for scale in "${scales[@]}"
+do
+  for skip in "${skips[@]}"
+  do
+cmd="python scripts_glide/compt/glide_sample.py $MODEL_FLAGS --guidance_scale ${scale}  $SAMPLE_FLAGS \
+ --logdir runsGLIDECOMPT/sampling_glide_compt/IMN64/scale${scale}_${skip}/  --skip_type linear --skip ${skip} --base_folder ${base_folder}"
+echo ${cmd}
+eval ${cmd}
+done
+done
+
+for scale in "${scales[@]}"
+do
+  for skip in "${skips[@]}"
+  do
+cmd="python evaluations/evaluator_tolog.py ${base_folder}/reference/VIRTUAL_MSCOCO_val_64x64_squ.npz \
+ ${base_folder}/runsGLIDECOMPT/sampling_glide_compt/IMN64/scale${scale}_${skip}/reference/samples_30000x64x64x3.npz"
+echo ${cmd}
+eval ${cmd}
+done
 done
 
 

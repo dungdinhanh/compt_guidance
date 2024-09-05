@@ -255,6 +255,8 @@ def main(local_rank):
     loss_file = os.path.join(output_images_folder, "cls_loss.png")
     plt.savefig(loss_file)
     plt.close()
+    loss_file_np = os.path.join(output_images_folder, "loss.npz")
+    np.savez(loss_file_np, losses_list, losses_testing_list)
 
     plt.plot(timesteps, losses_list)
     loss_testing_xt_list = np.asarray(loss_testing_xt)

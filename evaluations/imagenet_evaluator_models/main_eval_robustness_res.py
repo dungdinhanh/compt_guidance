@@ -25,7 +25,7 @@ model_names = [
     'densenet169', 'densenet201', 'densenet201', 'densenet161',
     'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn',
     'vgg19', 'vgg19_bn', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
-    'resnet152', 'unet256na', 'unet64na'
+    'resnet152', 'unet256na', 'unet64na', 'unet64nas'
 ]
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
@@ -115,6 +115,21 @@ def main(local_rank):
             dist_util.load_state_dict("models_imp/64x64_classifier.pt", map_location="cpu")
         )
 
+        diff = True
+    elif args.arch == 'unet64nas':
+        model = create_classifier(image_size=64,
+                                  classifier_use_fp16=False,
+                                  classifier_width=128,
+                                  classifier_depth=4,
+                                  classifier_attention_resolutions="32,16,8",
+                                  classifier_use_scale_shift_norm=True,
+                                  classifier_resblock_updown=True,
+                                  classifier_pool="attention",
+                                  out_channels=1000,
+                                  num_head_channels=64)
+        model.load_state_dict(
+            dist_util.load_state_dict("runs/classifier_training/models/model000900.pt", map_location="cpu")
+        )
         diff = True
     else:
         raise NotImplementedError

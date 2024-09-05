@@ -5,7 +5,6 @@ process towards more realistic images.
 
 import argparse
 import os
-print(os.getcwd())
 
 import numpy as np
 import torch as th
@@ -85,15 +84,15 @@ def main(local_rank):
     model.eval()
     logger.log('total base parameters', sum(x.numel() for x in model.parameters()))
 
-    # options_up = model_and_diffusion_defaults_upsampler()
-    # options_up['timestep_respacing'] = 'fast27'
-    # options_up['use_fp16'] = args.use_fp16
-    # model_up, diffusion_up = create_model_and_diffusion(**options_up)
-    # model_up.load_state_dict(load_checkpoint('upsample', th.device("cpu")))
-    # model_up.to(dist_util.dev())
-    # if args.use_fp16:
-    #     model_up.convert_to_fp16()
-    # model_up.eval()
+    options_up = model_and_diffusion_defaults_upsampler()
+    options_up['timestep_respacing'] = 'fast27'
+    options_up['use_fp16'] = args.use_fp16
+    model_up, diffusion_up = create_model_and_diffusion(**options_up)
+    model_up.load_state_dict(load_checkpoint('upsample', th.device("cpu")))
+    model_up.to(dist_util.dev())
+    if args.use_fp16:
+        model_up.convert_to_fp16()
+    model_up.eval()
     # print('total upsampler parameters', sum(x.numel() for x in model_up.parameters()))
 
 
@@ -121,8 +120,9 @@ def main(local_rank):
     checkpoint_temp = os.path.join(output_images_folder, "samples_temp.npz")
     vis_images_folder = os.path.join(output_images_folder, "sample_images")
     os.makedirs(vis_images_folder, exist_ok=True)
+    ims = options_up["image_size"]
     final_file = os.path.join(output_images_folder,
-                              f"samples_{args.num_samples}x{args.image_size}x{args.image_size}x3.npz")
+                              f"samples_{args.num_samples}x{ims}x{ims}x3.npz")
     if os.path.isfile(final_file):
         dist.barrier()
         logger.log("sampling complete")
@@ -140,6 +140,8 @@ def main(local_rank):
     caption_loader = load_data_caption_hfai(split="val", batch_size=args.batch_size)
 
     caption_iter = iter(caption_loader)
+
+    upsample_temp = 0.997
 
     skip = args.skip
     skip_type = args.skip_type
@@ -183,6 +185,38 @@ def main(local_rank):
         model.del_cache()
         sample = out
 
+        tokens = model.tokenizer.encode_batch(prompts)
+        tokens, mask = model.tokenizer.padded_tokens_and_mask_batch(
+            tokens, options_model['text_ctx']
+        )
+
+        model_up_kwargs = dict(
+            low_res=((sample + 1) * 127.5).round() / 127.5 - 1,
+            # Text tokens
+            tokens=th.tensor(tokens, device=dist_util.dev()),
+            mask=th.tensor(
+                            mask,
+                            dtype=th.bool,
+                            device=dist_util.dev())
+        )
+
+        model_up.del_cache()
+        up_shape = (args.batch_size, 3, options_up["image_size"], options_up["image_size"])
+        up_samples = diffusion_up.ddim_sample_loop(
+            model_up,
+            up_shape,
+            noise=th.randn(up_shape, device=dist_util.dev()) * upsample_temp,
+            device=dist_util.dev(),
+            clip_denoised=True,
+            progress=False,
+            model_kwargs=model_up_kwargs,
+            cond_fn=None,
+        )[:args.batch_size]
+        model_up.del_cache()
+
+        sample = up_samples
+
+
         if args.save_imgs_for_visualization and dist.get_rank() == 0 and (
                 len(all_images) // dist.get_world_size()) < 10:
             save_img_dir = vis_images_folder
@@ -224,6 +258,7 @@ def main(local_rank):
 
     dist.barrier()
     logger.log("sampling complete")
+
 
 def get_guidance_timesteps_linear(n=250, skip=5):
     # T = n - 1
@@ -279,7 +314,7 @@ def create_argparser():
         logdir="",
         skip=5,
         skip_type="linear",
-        base_folder = "./",
+        base_folder="./",
     )
     defaults.update(model_and_diffusion_defaults())
     # defaults.update(classifier_defaults())

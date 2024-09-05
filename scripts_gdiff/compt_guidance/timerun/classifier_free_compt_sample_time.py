@@ -13,30 +13,32 @@ import hfai.nccl.distributed as dist
 import torch.nn.functional as F
 import hfai
 from guided_diffusion import dist_util, logger
-from guided_diffusion.script_util import (
+from guided_diffusion.script_util_classifier_free import (
     NUM_CLASSES,
     model_and_diffusion_defaults,
     classifier_defaults,
-    create_model_and_diffusion,
+    create_model_and_diffusion_classifier_free2_compt,
     create_classifier,
     add_dict_to_argparser,
     args_to_dict,
+    create_model,
+    create_model_diffusion_unconditional
 )
 import datetime
 from PIL import Image
 import hfai.client
 from torchvision import utils
-import matplotlib.pyplot as plt
+import time
 
 
 def main(local_rank):
     args = create_argparser().parse_args()
 
     dist_util.setup_dist(local_rank)
-
+    base_folder = args.base_folder
     if args.fix_seed:
         import random
-        seed = args.seed
+        seed = 23333 + dist.get_rank()
         np.random.seed(seed)
         th.manual_seed(seed)  # CPU随机种子确定
         th.cuda.manual_seed(seed)  # GPU随机种子确定
@@ -49,7 +51,9 @@ def main(local_rank):
         np.random.seed(seed)
 
         os.environ['PYTHONHASHSEED'] = str(seed)
-    base_folder = args.base_folder
+
+
+
     save_folder = os.path.join(
         base_folder,
         args.logdir,
@@ -60,15 +64,13 @@ def main(local_rank):
 
     output_images_folder = os.path.join(base_folder, args.logdir, "reference")
     os.makedirs(output_images_folder, exist_ok=True)
-    vis_images_folder = os.path.join(output_images_folder, "sample_images")
-    os.makedirs(vis_images_folder, exist_ok=True)
-    vis_images_folder_xt = os.path.join(vis_images_folder, "xt")
-    os.makedirs(vis_images_folder_xt, exist_ok=True)
 
-    logger.log("creating model and diffusion...")
-    model, diffusion = create_model_and_diffusion(
+    logger.log("creating unconditional model and diffusion...")
+
+    model, diffusion = create_model_and_diffusion_classifier_free2_compt(
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
+    diffusion.skip_compt = args.skip
     model.load_state_dict(
         dist_util.load_state_dict(os.path.join(base_folder, args.model_path), map_location="cpu")
     )
@@ -78,59 +80,35 @@ def main(local_rank):
     model.eval()
 
 
-    logger.log("loading classifier...")
-    classifier = create_classifier(**args_to_dict(args, classifier_defaults().keys()))
-    classifier.load_state_dict(
-        dist_util.load_state_dict(os.path.join(base_folder, args.classifier_path), map_location="cpu")
+    logger.log("loading conditional model...")
+    uncond_model = create_model_diffusion_unconditional(**args_to_dict(args, model_and_diffusion_defaults().keys()))
+    uncond_model.load_state_dict(
+        dist_util.load_state_dict(os.path.join(base_folder, args.uncond_model_path), map_location="cpu")
     )
-    classifier.to(dist_util.dev())
-    if args.classifier_use_fp16:
-        classifier.convert_to_fp16()
-    classifier.eval()
-    df_steps = int(args.diffusion_steps)
-    timespace = int(args.timestep_respacing)
-    steps_skipped_diff = int(df_steps/timespace)
-    skip = int(args.skip)
-    loss_items = []
-    list_t = []
+    uncond_model.to(dist_util.dev())
+    if args.use_fp16:
+        uncond_model.convert_to_fp16()
+    uncond_model.eval()
+
     def cond_fn(x, t, y=None):
         assert y is not None
-        with th.enable_grad():
-            convert_t = int(t[0]/steps_skipped_diff) + 1
-            x_in = x.detach().requires_grad_(True)
-            logits = classifier(x_in, t)
-            log_probs = F.log_softmax(logits, dim=-1)
-            selected = log_probs[range(len(logits)), y.view(-1)]
-            loss_items.append(-selected.sum().detach().cpu().numpy())
-            if convert_t % skip == 0 or convert_t == 250:
-                # print("call guidance:-------------->", convert_t)
-                list_t.append(convert_t)
-                return th.autograd.grad(selected.sum(), x_in)[0] * args.classifier_scale
-            else:
-                # print("skip: ", convert_t)
-                return th.zeros_like(x_in)
+        return uncond_model(x, t)
 
     def model_fn(x, t, y=None):
-        utils.save_image(
-            x.detach().clamp(-1, 1),
-            os.path.join(vis_images_folder_xt, "samples_{}.png".format(t[0] + 1)),
-            nrow=1,
-            normalize=True,
-            range=(-1, 1),
-        )
-
         assert y is not None
-        return model(x, t, y if args.class_cond else None)
+        return model(x, t,  y)
 
     logger.log("Looking for previous file")
     checkpoint = os.path.join(output_images_folder, "samples_last.npz")
-
+    checkpoint_temp = os.path.join(output_images_folder, "samples_temp.npz")
+    vis_images_folder = os.path.join(output_images_folder, "sample_images")
+    os.makedirs(vis_images_folder, exist_ok=True)
     final_file = os.path.join(output_images_folder,
                               f"samples_{args.num_samples}x{args.image_size}x{args.image_size}x3.npz")
-    # if os.path.isfile(final_file):
-    #     dist.barrier()
-    #     logger.log("sampling complete")
-    #     return
+    if os.path.isfile(final_file):
+        dist.barrier()
+        logger.log("sampling complete")
+        return
     if os.path.isfile(checkpoint):
         npzfile = np.load(checkpoint)
         all_images = list(npzfile['arr_0'])
@@ -146,12 +124,18 @@ def main(local_rank):
     else:
         img_channels = 3
         num_class = NUM_CLASSES
+    start = time.time()
     while len(all_images) * args.batch_size < args.num_samples:
         model_kwargs = {}
-        classes = th.randint(
-            low=0, high=num_class, size=(args.batch_size,), device=dist_util.dev()
-        )
-        classes[:] = args.classes
+        if args.specified_class is not None:
+            classes = th.randint(
+                low=int(args.specified_class), high=int(args.specified_class) + 1, size=(args.batch_size,),
+                device=dist_util.dev()
+            )
+        else:
+            classes = th.randint(
+                low=0, high=args.num_classes, size=(args.batch_size,), device=dist_util.dev()
+            )
         model_kwargs["y"] = classes
         sample_fn = (
             diffusion.p_sample_loop if not args.use_ddim else diffusion.ddim_sample_loop
@@ -163,18 +147,21 @@ def main(local_rank):
             model_kwargs=model_kwargs,
             cond_fn=cond_fn,
             device=dist_util.dev(),
+            w_cond=args.cond_model_scale
         )
 
-        if args.save_imgs_for_visualization and dist.get_rank() == 0 and (
-                len(all_images) // dist.get_world_size()) < 10:
-            save_img_dir = vis_images_folder
-            utils.save_image(
-                sample.clamp(-1, 1),
-                os.path.join(save_img_dir, "samples_{}.png".format(len(all_images))),
-                nrow=4,
-                normalize=True,
-                range=(-1, 1),
-            )
+
+        # if args.save_imgs_for_visualization and dist.get_rank() == 0 and (
+        #         len(all_images) // dist.get_world_size()) < 10:
+        #     save_img_dir = vis_images_folder
+        #     utils.save_image(
+        #         sample.clamp(-1, 1),
+        #         os.path.join(save_img_dir, "samples_{}.png".format(len(all_images))),
+        #         nrow=4,
+        #         normalize=True,
+        #         range=(-1, 1),
+        #     )
+
 
         sample = ((sample + 1) * 127.5).clamp(0, 255).to(th.uint8)
         sample = sample.permute(0, 2, 3, 1)
@@ -188,37 +175,11 @@ def main(local_rank):
         dist.all_gather(gathered_labels, classes)
         batch_labels = [labels.cpu().numpy() for labels in gathered_labels]
         all_labels.extend(batch_labels)
-        if dist.get_rank() == 0:
-            if hfai.client.receive_suspend_command():
-                print("Receive suspend - good luck next run ^^")
-                hfai.client.go_suspend()
-            logger.log(f"created {len(all_images) * args.batch_size} samples")
-            np.savez(checkpoint, np.stack(all_images), np.stack(all_labels))
-
-    # draw classifier losses
-    losses_list = np.asarray(loss_items)
-    timesteps = np.arange(losses_list.shape[0])[::-1]
-    list_t = np.asarray(list_t)
-    plt.plot(timesteps, losses_list)
-    plt.vlines(list_t, -0.5, 0.0)
-    plt.gca().invert_xaxis()
-    loss_file = os.path.join(output_images_folder, "cls_loss.png")
-    plt.savefig(loss_file)
+    end = time.time()
+    duration = end - start
+    print(f"execution time {duration}")
 
 
-    arr = np.concatenate(all_images, axis=0)
-    arr = arr[: args.num_samples]
-    label_arr = np.concatenate(all_labels, axis=0)
-    label_arr = label_arr[: args.num_samples]
-    if dist.get_rank() == 0:
-        shape_str = "x".join([str(x) for x in arr.shape])
-        out_path = os.path.join(output_images_folder, f"samples_{shape_str}.npz")
-        logger.log(f"saving to {out_path}")
-        np.savez(out_path, arr, label_arr)
-        os.remove(checkpoint)
-
-    dist.barrier()
-    logger.log("sampling complete")
 
 
 def create_argparser():
@@ -228,24 +189,20 @@ def create_argparser():
         batch_size=16,
         use_ddim=False,
         model_path="",
-        classifier_path="",
-        classifier_scale=1.0,
+        uncond_model_path="",
+        cond_model_scale=1.0,
         save_imgs_for_visualization=True,
-        fix_seed=True,
+        fix_seed=False,
         specified_class=None,
         logdir="",
+        num_classes=1000,
         base_folder="./",
-        skip=5,
-        seed=2333,
-        classes=5,
+        skip=5
     )
     defaults.update(model_and_diffusion_defaults())
-    defaults.update(classifier_defaults())
     parser = argparse.ArgumentParser()
     add_dict_to_argparser(parser, defaults)
     return parser
-
-
 
 
 

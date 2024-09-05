@@ -39,6 +39,35 @@ def center_crop_arr(images, image_size):
     crop_x = (x_size - image_size) // 2
     return images[:, :, crop_y : crop_y + image_size, crop_x : crop_x + image_size]
 
+def center_enlarge_arr(images, image_size):
+    # We are not on a new enough PIL to support the `reducing_gap`
+    # argument, which uses BOX downsampling at powers of two first.
+    # Thus, we do it by hand to improve downsample quality.
+    y_size = images.shape[2]
+    x_size = images.shape[3]
+
+    new_images = th.zeros((images.shape[0], images.shape[1], image_size, image_size)).to(images.get_device())
+    crop_y = (image_size - y_size) //2
+    crop_x = (image_size - x_size) //2
+    new_images[:, :, crop_y: crop_y + y_size, crop_x: crop_x + x_size] = images
+    return new_images
+
+def center_enlarge_arr2(images, image_size):
+    # We are not on a new enough PIL to support the `reducing_gap`
+    # argument, which uses BOX downsampling at powers of two first.
+    # Thus, we do it by hand to improve downsample quality.
+    y_size = images.shape[2]
+    x_size = images.shape[3]
+
+    new_images = th.zeros((images.shape[0], images.shape[1], image_size, image_size)).to(images.get_device())
+    crop_y = (image_size - y_size) //2
+    crop_x = (image_size - x_size) //2
+    new_images[:, :, crop_y: crop_y + y_size, crop_x: crop_x + x_size] = images
+    new_images[:, :, 0: crop_y]  = images[:, :, 0 : crop_y]
+    new_images[:, :, :, 0:crop_x] = images[:, :, 0: crop_x]
+    new_images[:, :, 0: ]
+    return new_images
+
 
 def custom_normalize(images, mean, std):
     # print(images.shape)
@@ -111,11 +140,23 @@ def main(local_rank):
         classifier.convert_to_fp16()
     classifier.eval()
 
-    resnet_address = os.path.join(base_folder, 'eval_models/resnet50-19c8e357.pth')
-    resnet = models.resnet50()
-    resnet.load_state_dict(th.load(resnet_address))
-    resnet.eval()
-    resnet.cuda()
+
+    # Replace resnet by imn128 noise-aware
+    # resnet_address = os.path.join(base_folder, 'eval_models/resnet50-19c8e357.pth')
+    # resnet = models.resnet50()
+    # resnet.load_state_dict(th.load(resnet_address))
+    # resnet.eval()
+    # resnet.cuda()
+    # dict_args_cls2 = classifier_defaults()
+    # dict_args_cls2["image_size"] = 128
+    classifier2 = create_classifier(**args_to_dict(args, classifier_defaults().keys()))
+    classifier2.load_state_dict(
+        dist_util.load_state_dict(os.path.join( "/home/dzung/unisyddev/compt_guidance/runs/latest.pt"), map_location="cpu")
+    )
+    classifier2.to(dist_util.dev())
+    if args.classifier_use_fp16:
+        classifier2.convert_to_fp16()
+    classifier2.eval()
     # use off-the-shelf classifier for visualize overfitting
     mean_imn = [0.485, 0.456, 0.406]
     std_imn = [0.229, 0.224, 0.225]
@@ -134,25 +175,31 @@ def main(local_rank):
         with th.enable_grad():
             convert_t = int(t[0]/steps_skipped_diff) + 1
             x_in = inputs[0].detach().requires_grad_(True)
-            pred_xstart = inputs[1].detach().requires_grad_(True)
+            # x_in_enlarge = center_enlarge_arr(x_in, 128)
+            # pred_xstart = inputs[1].detach().requires_grad_(True)
+            #
+            # pred_xstart_r = ((pred_xstart + 1) * 127.).clamp(0, 255) / 255.0
+            # pred_xstart_r = center_crop_arr(pred_xstart_r, args.image_size)
+            # pred_xstart_r = custom_normalize(pred_xstart_r, mean_imn, std_imn)
+            #
+            # x_in_r = ((x_in + 1) * 127.).clamp(0, 255)/255.0
+            # x_in_r = center_crop_arr(x_in_r, args.image_size)
+            # x_in_r = custom_normalize(x_in_r, mean_imn, std_imn)
+            #
+            # x_in_r_0 = resnet(x_in_r)
+            # log_x_in_probs = F.log_softmax(x_in_r_0, dim=-1)
+            # selected_x_in = log_x_in_probs[range(len(x_in_r_0)), y.view(-1)]
+            # loss_testing_xt.append(-selected_x_in.mean().detach().cpu().numpy())
+            #
+            # p_x_0 = resnet(pred_xstart_r)
+            # log_probs_x0 = F.log_softmax(p_x_0, dim=-1)
+            # selected_x_0 = log_probs_x0[range(len(p_x_0)), y.view(-1)]
+            # loss_testing.append(-selected_x_0.mean().detach().cpu().numpy())
 
-            pred_xstart_r = ((pred_xstart + 1) * 127.).clamp(0, 255) / 255.0
-            pred_xstart_r = center_crop_arr(pred_xstart_r, args.image_size)
-            pred_xstart_r = custom_normalize(pred_xstart_r, mean_imn, std_imn)
-
-            x_in_r = ((x_in + 1) * 127.).clamp(0, 255)/255.0
-            x_in_r = center_crop_arr(x_in_r, args.image_size)
-            x_in_r = custom_normalize(x_in_r, mean_imn, std_imn)
-
-            x_in_r_0 = resnet(x_in_r)
-            log_x_in_probs = F.log_softmax(x_in_r_0, dim=-1)
-            selected_x_in = log_x_in_probs[range(len(x_in_r_0)), y.view(-1)]
-            loss_testing_xt.append(-selected_x_in.mean().detach().cpu().numpy())
-
-            p_x_0 = resnet(pred_xstart_r)
-            log_probs_x0 = F.log_softmax(p_x_0, dim=-1)
-            selected_x_0 = log_probs_x0[range(len(p_x_0)), y.view(-1)]
-            loss_testing.append(-selected_x_0.mean().detach().cpu().numpy())
+            p_x_t = classifier2(x_in.detach(), t)
+            log_probs_xt_test = F.log_softmax(p_x_t, dim=-1)
+            selected_x_t = log_probs_xt_test[range(len(p_x_t)), y.view(-1)]
+            loss_testing.append(-selected_x_t.mean().detach().cpu().numpy())
 
             logits = classifier(x_in, t)
             log_probs = F.log_softmax(logits, dim=-1)
@@ -258,9 +305,9 @@ def main(local_rank):
     loss_file_np = os.path.join(output_images_folder, "loss.npz")
     np.savez(loss_file_np, losses_list, losses_testing_list)
 
-    plt.plot(timesteps, losses_list)
-    loss_testing_xt_list = np.asarray(loss_testing_xt)
-    plt.plot(timesteps, loss_testing_xt)
+    # plt.plot(timesteps, losses_list)
+    # loss_testing_xt_list = np.asarray(loss_testing_xt)
+    # plt.plot(timesteps, loss_testing_xt)
     plt.vlines(list_t, -5, 0.0)
     plt.gca().invert_xaxis()
     loss_file_xt = os.path.join(output_images_folder, "cls_loss_xt.png")

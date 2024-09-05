@@ -10,12 +10,25 @@ SAMPLES=("runs/sampling_compt2/IMN64/conditional/scale0.1_skip5/reference/sample
 "runs/sampling_compt2/IMN64/conditional/scale0.5_skip5/reference/samples_50000x64x64x3.npz" \
 "runs/sampling_compt2/IMN64/conditional/scale1.0_skip5/reference/samples_50000x64x64x3.npz" \
 "runs/sampling_compt2/IMN64/conditional/scale2.0_skip5/reference/samples_50000x64x64x3.npz" \
-"runs/sampling_compt2/IMN64/conditional/scale4.0_skip5/reference/samples_50000x64x64x3.npz"
+"runs/sampling_compt2/IMN64/conditional/scale4.0_skip5/reference/samples_50000x64x64x3.npz" \
+"/home/dzung/unisyddev/metaguidance/runs/sampling_amd/IMN64/conditional/scale0.5/reference/samples_50000x64x64x3.npz"
 )
 
-SAMPLES=("/home/dzung/unisyddev/metaguidance/runs/sampling_amd/IMN64/conditional/scale0.5/reference/samples_50000x64x64x3.npz" )
-SAMPLES=("/home/dzung/unisyddev/metaguidance/runs/sampling_amd/IMN64/conditional/scale2.0/reference/samples_50000x64x64x3.npz" )
+#SAMPLES=( )
+#SAMPLES=("/home/dzung/unisyddev/metaguidance/runs/sampling_amd/IMN64/conditional/scale2.0/reference/samples_50000x64x64x3.npz" )
 
+
+SAMPLES=("runs/sampling_compt2/IMN64/conditional/scale0.1_skip5/reference/samples_50000x64x64x3.npz" \
+"runs/sampling_compt2/IMN64/conditional/scale2.2_skip5/reference/samples_50000x64x64x3.npz" \
+"runs/sampling_compt2/IMN64/conditional/scale2.4_skip5/reference/samples_50000x64x64x3.npz" \
+"runs/sampling_compt2/IMN64/conditional/scale2.6_skip5/reference/samples_50000x64x64x3.npz" \
+"runs/sampling_compt2/IMN64/conditional/scale2.8_skip5/reference/samples_50000x64x64x3.npz" \
+"runs/sampling_compt2/IMN64/conditional/scale3.4_skip5/reference/samples_50000x64x64x3.npz" \
+"runs/sampling_compt2/IMN64/conditional/scale3.6_skip5/reference/samples_50000x64x64x3.npz" \
+"runs/sampling_compt2/IMN64/conditional/scale3.8_skip5/reference/samples_50000x64x64x3.npz" \
+)
+
+SAMPLES=("/home/dzung/unisyddev/metaguidance/runs/sampling_amd/IMN64/conditional/scale2.0/reference/samples_50000x64x64x3.npz" )
 
 cmd="cd ../../../"
 #echo ${cmd}

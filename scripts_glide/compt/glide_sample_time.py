@@ -35,6 +35,7 @@ import hfai.client
 import hfai.multiprocessing
 
 from datasets.coco_helper import load_data_caption, load_data_caption_hfai
+import time
 
 
 def main(local_rank):
@@ -148,7 +149,7 @@ def main(local_rank):
         guidance_timesteps = get_guidance_timesteps_linear(int(args.timestep_respacing), skip)
     else:
         guidance_timesteps = get_guidance_timesteps_with_weight(int(args.timestep_respacing), skip)
-
+    start = time.time()
     while len(all_images) * args.batch_size < args.num_samples:
         prompts = next(caption_iter)
         while len(prompts) != args.batch_size:
@@ -201,29 +202,14 @@ def main(local_rank):
         gathered_samples = [th.zeros_like(sample) for _ in range(dist.get_world_size())]
         dist.all_gather(gathered_samples, sample)  # gather not supported with NCCL
         all_images.extend([sample.cpu().numpy() for sample in gathered_samples])
+    end = time.time()
 
-        if dist.get_rank() == 0:
-            if hfai.client.receive_suspend_command():
-                print("Receive suspend - good luck next run ^^")
-                hfai.client.go_suspend()
-            logger.log(f"created {len(all_images) * args.batch_size} samples")
-            np.savez(checkpoint_temp, np.stack(all_images))
-            if os.path.isfile(checkpoint):
-                os.remove(checkpoint)
-            os.rename(checkpoint_temp, checkpoint)
+    running_time = end - start
 
-    arr = np.concatenate(all_images, axis=0)
-    arr = arr[: args.num_samples]
-
-    if dist.get_rank() == 0:
-        shape_str = "x".join([str(x) for x in arr.shape])
-        out_path = os.path.join(output_images_folder, f"samples_{shape_str}.npz")
-        logger.log(f"saving to {out_path}")
-        np.savez(out_path, arr)
-        os.remove(checkpoint)
-
+    logger.log(f"running time {running_time}")
     dist.barrier()
-    logger.log("sampling complete")
+
+
 
 def get_guidance_timesteps_linear(n=250, skip=5):
     # T = n - 1

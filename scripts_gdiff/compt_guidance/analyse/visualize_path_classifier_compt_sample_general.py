@@ -13,11 +13,11 @@ import hfai.nccl.distributed as dist
 import torch.nn.functional as F
 import hfai
 from guided_diffusion import dist_util, logger
-from scripts_gdiff.compt_guidance.analyse.scripts_vis import (
+from guided_diffusion.script_util import (
     NUM_CLASSES,
     model_and_diffusion_defaults,
     classifier_defaults,
-    create_model_and_diffusion_wx0,
+    create_model_and_diffusion,
     create_classifier,
     add_dict_to_argparser,
     args_to_dict,
@@ -27,30 +27,7 @@ from PIL import Image
 import hfai.client
 from torchvision import utils
 import matplotlib.pyplot as plt
-import torchvision.models as models
 
-def center_crop_arr(images, image_size):
-    # We are not on a new enough PIL to support the `reducing_gap`
-    # argument, which uses BOX downsampling at powers of two first.
-    # Thus, we do it by hand to improve downsample quality.
-    y_size = images.shape[2]
-    x_size = images.shape[3]
-    crop_y = (y_size - image_size) // 2
-    crop_x = (x_size - image_size) // 2
-    return images[:, :, crop_y : crop_y + image_size, crop_x : crop_x + image_size]
-
-
-def custom_normalize(images, mean, std):
-    # print(images.shape)
-    # Check if the input tensor has the same number of channels as the mean and std
-    if images.size(1) != len(mean) or images.size(1) != len(std):
-        raise ValueError("The number of channels in the input tensor must match the length of mean and std.")
-    images = images.to(th.float)
-    # Normalize the tensor
-    for c in range(images.size(1)):
-        images[:, c, :, :] = (images[:, c, :, :] - mean[c]) / std[c]
-
-    return images
 
 def main(local_rank):
     args = create_argparser().parse_args()
@@ -59,7 +36,7 @@ def main(local_rank):
 
     if args.fix_seed:
         import random
-        seed = 23333 + dist.get_rank()
+        seed = args.seed
         np.random.seed(seed)
         th.manual_seed(seed)  # CPU随机种子确定
         th.cuda.manual_seed(seed)  # GPU随机种子确定
@@ -89,7 +66,7 @@ def main(local_rank):
     os.makedirs(vis_images_folder_xt, exist_ok=True)
 
     logger.log("creating model and diffusion...")
-    model, diffusion = create_model_and_diffusion_wx0(
+    model, diffusion = create_model_and_diffusion(
         **args_to_dict(args, model_and_diffusion_defaults().keys())
     )
     model.load_state_dict(
@@ -110,55 +87,24 @@ def main(local_rank):
     if args.classifier_use_fp16:
         classifier.convert_to_fp16()
     classifier.eval()
-
-    resnet_address = os.path.join(base_folder, 'eval_models/resnet50-19c8e357.pth')
-    resnet = models.resnet50()
-    resnet.load_state_dict(th.load(resnet_address))
-    resnet.eval()
-    resnet.cuda()
-    # use off-the-shelf classifier for visualize overfitting
-    mean_imn = [0.485, 0.456, 0.406]
-    std_imn = [0.229, 0.224, 0.225]
-
     df_steps = int(args.diffusion_steps)
     timespace = int(args.timestep_respacing)
     steps_skipped_diff = int(df_steps/timespace)
     skip = int(args.skip)
     loss_items = []
-    loss_testing = []
-    loss_testing_xt = []
     list_t = []
 
-    def cond_fn(inputs, t, y=None):
+    guidance_timesteps = get_guidance_timesteps_with_weight(250, skip, args.k)
+    def cond_fn(x, t, y=None):
         assert y is not None
         with th.enable_grad():
-            convert_t = int(t[0]/steps_skipped_diff) + 1
-            x_in = inputs[0].detach().requires_grad_(True)
-            pred_xstart = inputs[1].detach().requires_grad_(True)
-
-            pred_xstart_r = ((pred_xstart + 1) * 127.).clamp(0, 255) / 255.0
-            pred_xstart_r = center_crop_arr(pred_xstart_r, args.image_size)
-            pred_xstart_r = custom_normalize(pred_xstart_r, mean_imn, std_imn)
-
-            x_in_r = ((x_in + 1) * 127.).clamp(0, 255)/255.0
-            x_in_r = center_crop_arr(x_in_r, args.image_size)
-            x_in_r = custom_normalize(x_in_r, mean_imn, std_imn)
-
-            x_in_r_0 = resnet(x_in_r)
-            log_x_in_probs = F.log_softmax(x_in_r_0, dim=-1)
-            selected_x_in = log_x_in_probs[range(len(x_in_r_0)), y.view(-1)]
-            loss_testing_xt.append(-selected_x_in.mean().detach().cpu().numpy())
-
-            p_x_0 = resnet(pred_xstart_r)
-            log_probs_x0 = F.log_softmax(p_x_0, dim=-1)
-            selected_x_0 = log_probs_x0[range(len(p_x_0)), y.view(-1)]
-            loss_testing.append(-selected_x_0.mean().detach().cpu().numpy())
-
+            convert_t = int(t[0] / steps_skipped_diff)
+            x_in = x.detach().requires_grad_(True)
             logits = classifier(x_in, t)
             log_probs = F.log_softmax(logits, dim=-1)
             selected = log_probs[range(len(logits)), y.view(-1)]
-            loss_items.append(-selected.mean().detach().cpu().numpy())
-            if convert_t % skip == 0 or convert_t <=2:
+            loss_items.append(-selected.sum().detach().cpu().numpy())
+            if guidance_timesteps[convert_t] > 0:
                 # print("call guidance:-------------->", convert_t)
                 list_t.append(convert_t)
                 return th.autograd.grad(selected.sum(), x_in)[0] * args.classifier_scale
@@ -167,6 +113,13 @@ def main(local_rank):
                 return th.zeros_like(x_in)
 
     def model_fn(x, t, y=None):
+        utils.save_image(
+            x.detach().clamp(-1, 1),
+            os.path.join(vis_images_folder_xt, "samples_{}.png".format(t[0] + 1)),
+            nrow=1,
+            normalize=True,
+            range=(-1, 1),
+        )
 
         assert y is not None
         return model(x, t, y if args.class_cond else None)
@@ -200,6 +153,7 @@ def main(local_rank):
         classes = th.randint(
             low=0, high=num_class, size=(args.batch_size,), device=dist_util.dev()
         )
+        classes[:] = args.classes
         model_kwargs["y"] = classes
         sample_fn = (
             diffusion.p_sample_loop if not args.use_ddim else diffusion.ddim_sample_loop
@@ -245,42 +199,28 @@ def main(local_rank):
 
     # draw classifier losses
     losses_list = np.asarray(loss_items)
-    losses_testing_list = np.asarray(loss_testing)
     timesteps = np.arange(losses_list.shape[0])[::-1]
     list_t = np.asarray(list_t)
     plt.plot(timesteps, losses_list)
-    plt.plot(timesteps, losses_testing_list)
-    plt.vlines(list_t, -5, 0.0)
+    plt.vlines(list_t, -0.5, 0.0)
     plt.gca().invert_xaxis()
     loss_file = os.path.join(output_images_folder, "cls_loss.png")
     plt.savefig(loss_file)
-    plt.close()
-    loss_file_np = os.path.join(output_images_folder, "loss.npz")
-    np.savez(loss_file_np, losses_list, losses_testing_list)
-
-    plt.plot(timesteps, losses_list)
-    loss_testing_xt_list = np.asarray(loss_testing_xt)
-    plt.plot(timesteps, loss_testing_xt)
-    plt.vlines(list_t, -5, 0.0)
-    plt.gca().invert_xaxis()
-    loss_file_xt = os.path.join(output_images_folder, "cls_loss_xt.png")
-    plt.savefig(loss_file_xt)
-    plt.close()
 
 
-    # arr = np.concatenate(all_images, axis=0)
-    # arr = arr[: args.num_samples]
-    # label_arr = np.concatenate(all_labels, axis=0)
-    # label_arr = label_arr[: args.num_samples]
-    # if dist.get_rank() == 0:
-    #     shape_str = "x".join([str(x) for x in arr.shape])
-    #     out_path = os.path.join(output_images_folder, f"samples_{shape_str}.npz")
-    #     logger.log(f"saving to {out_path}")
-    #     np.savez(out_path, arr, label_arr)
-    #     os.remove(checkpoint)
-    #
-    # dist.barrier()
-    # logger.log("sampling complete")
+    arr = np.concatenate(all_images, axis=0)
+    arr = arr[: args.num_samples]
+    label_arr = np.concatenate(all_labels, axis=0)
+    label_arr = label_arr[: args.num_samples]
+    if dist.get_rank() == 0:
+        shape_str = "x".join([str(x) for x in arr.shape])
+        out_path = os.path.join(output_images_folder, f"samples_{shape_str}.npz")
+        logger.log(f"saving to {out_path}")
+        np.savez(out_path, arr, label_arr)
+        os.remove(checkpoint)
+
+    dist.barrier()
+    logger.log("sampling complete")
 
 
 def create_argparser():
@@ -293,11 +233,14 @@ def create_argparser():
         classifier_path="",
         classifier_scale=1.0,
         save_imgs_for_visualization=True,
-        fix_seed=False,
+        fix_seed=True,
         specified_class=None,
         logdir="",
         base_folder="./",
-        skip=5
+        skip=5,
+        seed=2333,
+        classes=5,
+        k=1.0
     )
     defaults.update(model_and_diffusion_defaults())
     defaults.update(classifier_defaults())
@@ -305,7 +248,30 @@ def create_argparser():
     add_dict_to_argparser(parser, defaults)
     return parser
 
-
+def get_guidance_timesteps_with_weight(n=250, skip=5, k=1):
+    # c * i^2
+    T = n - 1
+    max_steps = int(n/skip)
+    c = n/(max_steps**k)
+    guidance_timesteps = np.zeros((n,), dtype=int)
+    for i in range(max_steps):
+        guidance_index = - int(c * (i ** k)) + T
+        if 0 <= guidance_index and guidance_index <= T:
+            guidance_timesteps[guidance_index] += 1
+        else:
+            print(f"guidance index: {guidance_index}")
+            print(f"constant c: {c}")
+            print(f"faulty index: {i}")
+            print(f"timesteps {T}")
+            print(f"compressd by {skip} times")
+            print(f"error in index must larger than 0 or less than {T}")
+            exit(0)
+    guidance_timesteps[0] = 1
+    guidance_timesteps[1] = 1
+    # print(guidance_timesteps)
+    # print(np.sum(guidance_timesteps))
+    # exit(0)
+    return guidance_timesteps
 
 if __name__ == "__main__":
     ngpus = th.cuda.device_count()
