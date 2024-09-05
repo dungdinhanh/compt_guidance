@@ -35,10 +35,7 @@ SAMPLES=("/home/dzung/unisyddev/compt_guidance/runs/sampling_compt2/IMN64/uncond
 SAMPLES=("/home/dzung/unisyddev/compt_guidance/runs/sampling_compt2/IMN64/unconditional/scale18.0_skip5/reference/samples_50000x64x64x3.npz" \
 "/home/dzung/unisyddev/compt_guidance/runs/sampling_compt2/IMN64/unconditional/scale19.0_skip5/reference/samples_50000x64x64x3.npz")
 
-SAMPLES=("/home/dzung/unisyddev/compt_guidance/runs/sampling_compt2/IMN64/unconditional/scale4.0/reference/samples_50000x64x64x3.npz" \
-"/home/dzung/unisyddev/compt_guidance/runs/sampling_compt2/IMN64/unconditional/scale20.0_skip5/reference/samples_50000x64x64x3.npz" \
-"/home/dzung/unisyddev/compt_guidance/runs/sampling_compt2/IMN64/unconditional/scale21.0_skip5/reference/samples_50000x64x64x3.npz" \
-"/home/dzung/unisyddev/compt_guidance/runs/sampling_compt2/IMN64/unconditional/scale22.0_skip5/reference/samples_50000x64x64x3.npz")
+SAMPLES=("/home/dzung/unisyddev/compt_guidance/runs/sampling_compt2_overfitting/IMN64_ES/samples_50000x64x64x3.npz" )
 
 cmd="cd ../../../"
 #echo ${cmd}

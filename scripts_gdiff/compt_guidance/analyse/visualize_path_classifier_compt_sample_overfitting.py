@@ -59,7 +59,7 @@ def main(local_rank):
 
     if args.fix_seed:
         import random
-        seed = 23333 + dist.get_rank()
+        seed = 23338 + dist.get_rank()
         np.random.seed(seed)
         th.manual_seed(seed)  # CPU随机种子确定
         th.cuda.manual_seed(seed)  # GPU随机种子确定

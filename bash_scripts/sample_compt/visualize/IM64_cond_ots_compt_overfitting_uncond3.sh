@@ -42,16 +42,17 @@ do
   do
 cmd="python scripts_gdiff/compt_guidance/analyse/visualize_path_classifier_compt_sample_overfitting3.py $MODEL_FLAGS --classifier_scale ${scale}  \
  --model_path models/64x64_diffusion_unc.pt $SAMPLE_FLAGS --classifier_path models/64x64_classifier.pt \
- --logdir runs/sampling_compt2quad_visualize_overfitting_imn64test/IMN64_withxt/unconditional/scale${scale}_skip${skip}/ \
+ --logdir runs/sampling_compt2quad_visualize_overfitting_imn64test2/IMN64_withxt/unconditional/scale${scale}_skip${skip}/ \
   --save_imgs_for_visualization True --classifier_depth 4 --base_folder ${base_folder} --skip ${skip}"
-echo ${cmd}
-eval ${cmd}
+#echo ${cmd}
+#eval ${cmd}
 done
 done
 
 
 #scales=("17.0" "18.0"  "19.0"  "20.0")
 scales=("17.0" "18.0"  "19.0"  "20.0" "21.0" "22.0" "23.0")
+scales=( "19.0"  "20.0" "21.0" "22.0" "23.0")
 #scales=("11.0" "12.0" "13.0" "14.0")
 #scales=("11.0" "12.0" "13.0" "14.0")
 #scales=("2.0")
@@ -66,7 +67,7 @@ do
   do
 cmd="python scripts_gdiff/compt_guidance/analyse/visualize_path_classifier_compt_sample_overfitting3.py $MODEL_FLAGS --classifier_scale ${scale}  \
  --model_path models/64x64_diffusion_unc.pt $SAMPLE_FLAGS --classifier_path models/64x64_classifier.pt \
- --logdir runs/sampling_compt2quad_visualize_overfitting_imn64test/IMN64_withxt/unconditional/scale${scale}_skip${skip}/ \
+ --logdir runs/sampling_compt2quad_visualize_overfitting_imn64test2/IMN64_withxt_below5/unconditional/scale${scale}_skip${skip}/ \
   --save_imgs_for_visualization True --classifier_depth 4 --base_folder ${base_folder} --skip ${skip}"
 echo ${cmd}
 eval ${cmd}

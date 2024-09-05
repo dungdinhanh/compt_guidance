@@ -128,7 +128,8 @@ def main(local_rank):
                                   out_channels=1000,
                                   num_head_channels=64)
         model.load_state_dict(
-            dist_util.load_state_dict("runs/classifier_training/models/model000900.pt", map_location="cpu")
+            dist_util.load_state_dict("runs/classifier_training/models/model009999.pt", map_location="cpu")
+            # dist_util.load_state_dict("/home/dzung/unisyddev/compt_guidance/runs/latest.pt", map_location="cpu")
         )
         diff = True
     else:

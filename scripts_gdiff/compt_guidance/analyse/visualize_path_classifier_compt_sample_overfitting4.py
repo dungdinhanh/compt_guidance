@@ -205,7 +205,7 @@ def main(local_rank):
             log_probs = F.log_softmax(logits, dim=-1)
             selected = log_probs[range(len(logits)), y.view(-1)]
             loss_items.append(-selected.mean().detach().cpu().numpy())
-            if convert_t % skip == 0 or convert_t <= 1:
+            if convert_t >= 200:
                 # print("call guidance:-------------->", convert_t)
                 list_t.append(convert_t)
                 return th.autograd.grad(selected.sum(), x_in)[0] * args.classifier_scale
@@ -345,7 +345,7 @@ def create_argparser():
         logdir="",
         base_folder="./",
         skip=5,
-        seed=23334
+        seed=23333
     )
     defaults.update(model_and_diffusion_defaults())
     defaults.update(classifier_defaults())

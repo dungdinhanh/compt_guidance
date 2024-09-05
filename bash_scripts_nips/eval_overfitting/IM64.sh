@@ -3,7 +3,8 @@
 
 ARCHs=("unet64na" "resnet34" "resnet50"  "resnet152" )
 ARCHs=("unet64na"  "resnet152" "unet64nas")
-ARCHs=("unet64na"  "resnet152" )
+#ARCHs=( "unet64nas")
+#ARCHs=("unet64na"  "resnet152" )
 #ARCHs=("resnet152" )
 #ARCHs=( "unet64nas")
 #ARCHs=( "resnet34" "resnet50"  "resnet152" "densenet169" "densenet121" "densenet201" "squeezenet1_0" "squeezenet1_1" )

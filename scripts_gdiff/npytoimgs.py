@@ -8,7 +8,7 @@ def read_file_to_numpy(file):
     npzfile = np.load(file)
     n = len(npzfile)
     if n == 1:
-        return list(npzfile['arr_0'])
+        return list(npzfile['arr_0']), None
     else:
         all_images = list(npzfile['arr_0'])
         all_labels = list(npzfile['arr_1'])
@@ -17,6 +17,8 @@ def read_file_to_numpy(file):
 
 
 def load_numpy_labels_to_image(array1, array2, folder_path):
+    if array2 is None:
+        array2 = np.ones(len(array1))
     for i in range(len(array1)):
         im = Image.fromarray(array1[i], "RGB")
         img_name = "image"
