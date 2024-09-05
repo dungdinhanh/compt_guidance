@@ -1,0 +1,166 @@
+ls
+LICENSE
+README.md
+auto_scripts
+bash_scripts
+bash_scripts_hfai
+bash_scripts_nci
+bash_scripts_nips
+classify_image_graph_def.pb
+datasets
+eds_guided_diffusion
+errors
+evaluations
+glide_text2im
+guided_diffusion
+guided_diffusion.egg-info
+improved_diffusion
+install_requirements.sh
+install_requirements_hfai.sh
+install_requirements_nci.sh
+install_requirements_nci2.sh
+model-card.md
+output_256
+output_ablation
+output_clsfree
+output_nci
+output_nci2
+reference
+requirements.txt
+scripts_gdiff
+scripts_glide
+setup.py
+tempignore.txt
+WORLD_SIZE=1 RANK=0 MASTER_IP=127.0.0.1 MASTER_PORT=30518 MARSV2_WHOLE_LIFE_STATE=0 python3 scripts_gdiff/compt_guidance/classifier_free_compt_sample_general.py --attention_resolutions 32,16,8 --class_cond True --diffusion_steps 1000 --dropout 0.1 --image_size 64 --learn_sigma True --noise_schedule cosine --num_channels 192 --num_head_channels 64 --num_res_blocks 3 --resblock_updown True --use_new_attention_order True --use_fp16 True --use_scale_shift_norm True --model_path models/64x64_diffusion.pt --uncond_model_path models/64x64_diffusion_unc.pt --batch_size 130 --num_samples 50000 --timestep_respacing 250 --logdir runs/sampling_compt2/IMN64_clsfree/conditional/scale0.1_skip11_k1.3/ --save_imgs_for_visualization True --base_folder /scratch/zg12/dd9648 --skip 11 --k 1.3
+Logging to /scratch/zg12/dd9648/runs/sampling_compt2/IMN64_clsfree/conditional/scale0.1_skip11_k1.3/logs
+creating unconditional model and diffusion...
+loading conditional model...
+Looking for previous file
+Number of current images: 0
+sampling...
+created 520 samples
+created 1040 samples
+created 1560 samples
+created 2080 samples
+created 2600 samples
+created 3120 samples
+created 3640 samples
+created 4160 samples
+created 4680 samples
+created 5200 samples
+created 5720 samples
+created 6240 samples
+created 6760 samples
+created 7280 samples
+created 7800 samples
+created 8320 samples
+created 8840 samples
+created 9360 samples
+created 9880 samples
+created 10400 samples
+created 10920 samples
+created 11440 samples
+created 11960 samples
+created 12480 samples
+created 13000 samples
+created 13520 samples
+created 14040 samples
+created 14560 samples
+created 15080 samples
+created 15600 samples
+created 16120 samples
+created 16640 samples
+created 17160 samples
+created 17680 samples
+created 18200 samples
+created 18720 samples
+created 19240 samples
+created 19760 samples
+created 20280 samples
+created 20800 samples
+created 21320 samples
+created 21840 samples
+created 22360 samples
+created 22880 samples
+created 23400 samples
+created 23920 samples
+created 24440 samples
+created 24960 samples
+created 25480 samples
+created 26000 samples
+created 26520 samples
+created 27040 samples
+created 27560 samples
+created 28080 samples
+created 28600 samples
+created 29120 samples
+created 29640 samples
+created 30160 samples
+created 30680 samples
+created 31200 samples
+created 31720 samples
+created 32240 samples
+created 32760 samples
+created 33280 samples
+created 33800 samples
+created 34320 samples
+created 34840 samples
+created 35360 samples
+created 35880 samples
+created 36400 samples
+created 36920 samples
+created 37440 samples
+created 37960 samples
+created 38480 samples
+created 39000 samples
+created 39520 samples
+created 40040 samples
+created 40560 samples
+created 41080 samples
+created 41600 samples
+created 42120 samples
+created 42640 samples
+created 43160 samples
+created 43680 samples
+created 44200 samples
+created 44720 samples
+created 45240 samples
+created 45760 samples
+created 46280 samples
+created 46800 samples
+created 47320 samples
+created 47840 samples
+created 48360 samples
+created 48880 samples
+created 49400 samples
+created 49920 samples
+created 50440 samples
+saving to /scratch/zg12/dd9648/runs/sampling_compt2/IMN64_clsfree/conditional/scale0.1_skip11_k1.3/reference/samples_50000x64x64x3.npz
+sampling complete
+python3 evaluations/evaluator_tolog.py /scratch/zg12/dd9648/reference/VIRTUAL_imagenet64_labeled.npz /scratch/zg12/dd9648/runs/sampling_compt2/IMN64_clsfree/conditional/scale0.1_skip11/reference/samples_50000x64x64x3.npz
+warming up TensorFlow...
+computing reference batch activations...
+computing/reading reference batch statistics...
+computing sample batch activations...
+computing/reading sample batch statistics...
+Computing evaluations...
+Inception Score: 62.72113037109375
+FID: 1.9068035690521015
+sFID: 4.457421105998492
+Precision: 0.76912
+Recall: 0.6105
+
+======================================================================================
+                  Resource Usage on 2024-05-20 12:12:58:
+   Job Id:             116055069.gadi-pbs
+   Project:            zg12
+   Exit Status:        0
+   Service Units:      971.64
+   NCPUs Requested:    48                     NCPUs Used: 48              
+                                           CPU Time Used: 26:51:28        
+   Memory Requested:   50.0GB                Memory Used: 21.07GB         
+   NGPUs Requested:    4                 GPU Utilisation: 44%             
+                                         GPU Memory Used: 9.72GB          
+   Walltime requested: 20:00:00            Walltime Used: 06:44:51        
+   JobFS requested:    50.0GB                 JobFS used: 0B              
+======================================================================================
